@@ -1,0 +1,590 @@
+================================================================================
+DEADLINE RESCUE — MASTER IMPLEMENTATION & DEPLOYMENT PHASES
+================================================================================
+Track: Amazon Developer Hackathon (Alexa+ Track)
+Format: Self-hosted MCP Server (MCP Spec 2025-11-25+ over Streamable HTTP)
+        + React/Vite Demo Client & Agent Host
+Rule: Strict ₹0 out-of-pocket cost baseline (100% Free / Local-first)
+Target Submission Deadline: October 24, 2026, 12:30 AM IST
+================================================================================
+
+TABLE OF PHASES:
+--------------------------------------------------------------------------------
+Phase 1: Environment Setup, Workspace Architecture & Zero-Cost Toolchain
+Phase 2: Database Schema & Core Data Model Implementation (SQLite)
+Phase 3: Parsing, Evidence Extraction & Deterministic Analysis Engine
+Phase 4: Self-Hosted MCP Server Development (Spec 2025-11-25+, Streamable HTTP)
+Phase 5: Backend Application Layer, Agent Host & MCP Client Integration
+Phase 6: Frontend Development (React + Vite Web Demo Client & MCP Visualizer)
+Phase 7: End-to-End Scenarios & Follow-Through Workflows (Scenarios A to D)
+Phase 8: Synthetic Testing, Accuracy Benchmarking & Friction Log Documentation
+Phase 9: Production Packaging, Local Readiness & Zero-Cost Deployment Strategy
+Phase 10: Demo Video Production (<3 Min), GitHub Audit & Devpost Submission
+
+================================================================================
+PHASE 1: ENVIRONMENT SETUP, WORKSPACE ARCHITECTURE & ZERO-COST TOOLCHAIN
+================================================================================
+Goal: Establish a clean, reproducible monorepo/polyrepo structure for both
+      frontend and backend with zero paid dependencies, pinned libraries, and
+      development tooling.
+
+1.1 Repository Structure Initialization
+    - Initialize Git repository with .gitignore for Python (venv, __pycache__,
+      *.sqlite, *.db), Node.js (node_modules, dist), environment files (.env).
+    - Establish directory layout:
+      /AmazonDevHktn-Aheadly
+      ├── /backend
+      │   ├── /app
+      │   │   ├── __init__.py
+      │   │   ├── config.py
+      │   │   ├── database.py
+      │   │   ├── models.py
+      │   │   ├── schemas.py
+      │   │   ├── /parsers
+      │   │   │   ├── __init__.py
+      │   │   │   ├── text_parser.py
+      │   │   │   ├── email_parser.py
+      │   │   │   └── pdf_parser.py
+      │   │   ├── /engine
+      │   │   │   ├── __init__.py
+      │   │   │   ├── date_extractor.py
+      │   │   │   ├── category_rules.py
+      │   │   │   └── obligation_classifier.py
+      │   │   ├── /mcp_server
+      │   │   │   ├── __init__.py
+      │   │   │   ├── server.py
+      │   │   │   ├── tools.py
+      │   │   │   └── transport.py (Streamable HTTP handler)
+      │   │   ├── /services
+      │   │   │   ├── deadline_service.py
+      │   │   │   ├── calendar_service.py (.ics generator)
+      │   │   │   └── mcp_client.py
+      │   │   └── main.py (FastAPI entrypoint)
+      │   ├── /tests
+      │   ├── /sample_data (synthetic emails, PDFs, bills)
+      │   ├── requirements.txt
+      │   └── run_server.py
+      ├── /frontend
+      │   ├── /src
+      │   │   ├── /components
+      │   │   │   ├── Header.jsx
+      │   │   │   ├── SourceUploader.jsx
+      │   │   │   ├── CandidateReviewCard.jsx
+      │   │   │   ├── DeadlineList.jsx
+      │   │   │   ├── EvidenceViewer.jsx
+      │   │   │   ├── McpToolCallLog.jsx
+      │   │   │   └── CalendarExportModal.jsx
+      │   │   ├── /context
+      │   │   │   └── DeadlineContext.jsx
+      │   │   ├── /styles
+      │   │   │   └── index.css
+      │   │   ├── App.jsx
+      │   │   └── main.jsx
+      │   ├── package.json
+      │   └── vite.config.js
+      ├── /docs
+      │   ├── friction_log.md
+      │   ├── product_feedback.md
+      │   └── architecture_diagram.png
+      ├── idea.md
+      ├── phases.txt
+      └── README.md
+
+1.2 Backend Dependency Configuration (Strict ₹0 Baseline)
+    - Python version: 3.11+
+    - Core dependencies in requirements.txt:
+      * fastapi==0.115.0+ and uvicorn[standard]==0.31.0+ (HTTP & async API)
+      * mcp==1.0.0+ (Official Model Context Protocol Python SDK supporting 2025-11-25+)
+      * pydantic==2.9.0+ (Data validation & JSON schema)
+      * aiosqlite==0.20.0+ / sqlite3 (Zero-cost ACID local storage)
+      * python-dateutil==2.9.0+ (Deterministic date parsing)
+      * pypdf==5.0.0+ or pdfplumber (Local PDF text extraction without paid OCR)
+      * icalendar==5.0.13+ (Zero-cost .ics file generation)
+      * httpx==0.27.0+ (Async client for Streamable HTTP MCP calls)
+      * pytest==8.3.0+ & pytest-asyncio (Local test suite)
+    - Setup Python virtual environment:
+      python -m venv venv
+      source venv/bin/activate (or .\venv\Scripts\Activate.ps1 on Windows)
+      pip install -r requirements.txt
+
+1.3 Frontend Dependency Configuration
+    - Initialize Vite + React project:
+      npm create vite@latest frontend -- --template react
+    - Dependencies in package.json:
+      * lucide-react (Modern, clean icon set)
+      * clsx / tailwind-merge (or modern modular vanilla CSS)
+    - Configure local proxy in vite.config.js to forward /api and /mcp requests
+      to the Python backend on http://127.0.0.1:8000.
+
+1.4 Verification & Validation Checklist:
+    [ ] Virtual environment created and all backend packages installed.
+    [ ] Vite dev server boots cleanly with zero errors on npm run dev.
+    [ ] Strict check: No paid API credentials, No Bedrock keys, No cloud billing
+        profiles configured.
+
+================================================================================
+PHASE 2: DATABASE SCHEMA & CORE DATA MODEL IMPLEMENTATION (SQLite)
+================================================================================
+Goal: Implement a reliable, local SQLite storage layer that models sources,
+      candidate obligations, confirmed deadlines, reminders, and audit trails.
+
+2.1 Data Entities & Schema Definition
+    - Table 1: `sources`
+      * id: TEXT PRIMARY KEY (UUID4)
+      * title: TEXT NOT NULL (e.g., filename or "Pasted Snippet - Oct 14")
+      * raw_text: TEXT NOT NULL
+      * source_type: TEXT NOT NULL ('email', 'pdf', 'sms', 'receipt', 'manual')
+      * file_hash: TEXT (SHA-256 to prevent duplicate processing)
+      * created_at: DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+    - Table 2: `deadlines`
+      * id: TEXT PRIMARY KEY (UUID4)
+      * source_id: TEXT NOT NULL (FOREIGN KEY -> sources.id)
+      * provider_name: TEXT NOT NULL (e.g., "Netflix", "Airtel", "HDFC ERGO")
+      * category: TEXT NOT NULL ('subscription', 'insurance', 'broadband',
+        'mobile', 'utility', 'dth', 'return_window', 'other')
+      * obligation_type: TEXT NOT NULL ('payment_due', 'renewal', 'trial_ending',
+        'validity_expiry', 'cancellation_deadline', 'return_deadline')
+      * candidate_date: TEXT NOT NULL (ISO 8601 YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)
+      * original_date_str: TEXT (Raw string found in source, e.g., "20th Oct")
+      * amount: REAL (Nullable)
+      * currency: TEXT DEFAULT 'INR'
+      * evidence_snippet: TEXT NOT NULL (Verbatim excerpt from source)
+      * evidence_char_start: INTEGER
+      * evidence_char_end: INTEGER
+      * extraction_confidence: REAL (0.0 to 1.0)
+      * verification_status: TEXT NOT NULL ('source_stated', 'user_confirmed',
+        'estimated', 'unverified')
+      * recurrence: TEXT ('one_time', 'monthly', 'annual', 'unconfirmed')
+      * official_url: TEXT (Nullable - validated provider support URL)
+      * next_step_instructions: TEXT (Nullable checklist/summary)
+      * status: TEXT NOT NULL ('needs_review', 'confirmed', 'upcoming',
+        'action_needed', 'completed', 'cancelled', 'date_unverified')
+      * owner: TEXT (Nullable, e.g. "Self", "Roommate")
+      * created_at: DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      * updated_at: DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+    - Table 3: `reminders`
+      * id: TEXT PRIMARY KEY (UUID4)
+      * deadline_id: TEXT NOT NULL (FOREIGN KEY -> deadlines.id)
+      * remind_at: DATETIME NOT NULL
+      * lead_days: INTEGER NOT NULL (e.g., 7, 3, 1, 0)
+      * status: TEXT NOT NULL ('scheduled', 'fired', 'dismissed')
+      * created_at: DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+    - Table 4: `audit_logs`
+      * id: TEXT PRIMARY KEY (UUID4)
+      * deadline_id: TEXT NOT NULL
+      * action: TEXT NOT NULL ('extracted', 'user_edited', 'confirmed',
+        'status_changed', 'reminder_created')
+      * previous_value: TEXT (JSON string)
+      * new_value: TEXT (JSON string)
+      * timestamp: DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+2.2 Database Layer Implementation
+    - Create `backend/app/database.py` with async connection pool using aiosqlite.
+    - Write idempotent database migrations/initialization logic creating tables
+      and indexes on `status`, `candidate_date`, and `source_id`.
+    - Implement CRUD operations in `backend/app/services/deadline_service.py`.
+
+2.3 Verification & Validation Checklist:
+    [ ] SQLite DB initializes locally at `backend/data/deadline_rescue.db`.
+    [ ] Unit test verifying CRUD: insert source -> create candidate -> update
+        status -> check audit log trigger.
+    [ ] Database rollback on error tested and verified.
+
+================================================================================
+PHASE 3: PARSING, EVIDENCE EXTRACTION & DETERMINISTIC ANALYSIS ENGINE
+================================================================================
+Goal: Build a high-precision, evidence-backed parser that extracts candidate
+      deadlines, quotes verbatim snippets, handles date ambiguities responsibly,
+      and operates at ₹0 cost without mandatory external AI APIs.
+
+3.1 Ingestion & File Parsers
+    - `text_parser.py`: Handles plain text, pasted email bodies, and SMS strings.
+      Normalizes whitespace and tracks character offsets.
+    - `email_parser.py`: Parses .eml or standard email headers (From, Subject,
+      Date) and extracts body text (plain + HTML sanitization via standard lib).
+    - `pdf_parser.py`: Extracts text and page coordinates using `pypdf`/`pdfplumber`.
+      Gracefully detects scanned/image PDFs and reports "No readable text layer;
+      please paste text or provide a digital PDF".
+
+3.2 Deterministic Date & Keyword Extraction Engine
+    - Build `date_extractor.py` combining regex patterns and `python-dateutil`:
+      * Common Indian & Global formats: "DD/MM/YYYY", "DD-MM-YYYY",
+        "Month DD, YYYY", "DD Month YYYY", "valid till DD-MMM".
+      * Relative expressions: "renew in X days", "due in 48 hours".
+      * Anchored patterns: matches following "due date:", "payment by:",
+        "validity ends:", "renews on:", "trial ends on:".
+    - Verbatim Evidence Span Tracking:
+      * For every candidate date found, capture a surrounding window of text
+        (e.g., ~120 characters or the full sentence) as `evidence_snippet`.
+      * Record start and end character indices within the source document.
+
+3.3 Obligation Classifier & Safety Rules
+    - Category & Obligation Type detection (`obligation_classifier.py`):
+      * Free trial renewal: keywords ("trial", "renews at", "cancel anytime before").
+      * Utilities / Broadband: keywords ("bill period", "units consumed", "due date").
+      * Insurance: keywords ("premium", "policy number", "renewal date").
+      * Validity / Recharge: keywords ("plan validity", "pack expires", "recharge").
+    - Strict Uncertainty Rules (Scenario D compliance):
+      * If a date matches vague phrases like "sometime this month", "near the end
+        of the month", or "early next week", DO NOT fabricate a specific calendar date!
+      * Mark status as `date_unverified` with `verification_status: 'unverified'`.
+      * Return explicit flag `requires_user_input: True` with instruction asking
+        the user to confirm exact day or upload a bill notice.
+    - Graceful AI Enhancement Layer (Zero-cost optional):
+      * Deterministic parsing runs first and acts as the ground truth.
+      * If local Ollama (e.g. llama3.2:1b or mistral:7b) is installed locally,
+        allow an optional semantic extraction pass; if not installed or unreachable,
+        silently and cleanly use the 100% deterministic engine.
+      * Never fail if no LLM is running.
+
+3.4 Verification & Validation Checklist:
+    [ ] Test suite with 15+ curated test cases:
+        - Definite due date extraction with exact quoted snippet.
+        - Trial expiration extraction with cancellation condition.
+        - Ambiguous text ("near end of month") flagged as `date_unverified`.
+        - Source without date triggers graceful empty candidates message.
+    [ ] All extracted dates have 100% matching verbatim evidence in source.
+
+================================================================================
+PHASE 4: SELF-HOSTED MCP SERVER DEVELOPMENT (SPEC 2025-11-25+, STREAMABLE HTTP)
+================================================================================
+Goal: Implement the core hackathon requirement: an official MCP (Model Context
+      Protocol) server following specification version 2025-11-25 or later,
+      running over Streamable HTTP transport with production-grade tools.
+
+4.1 MCP Server Architecture & Transport Setup
+    - Utilize official Python MCP SDK with Streamable HTTP transport handler.
+    - Server endpoint: `/mcp` (supports HTTP POST for JSON-RPC 2.0 messages and
+      HTTP GET for Server-Sent Events / SSE streamable transport).
+    - Server identification:
+      * Name: "deadline-rescue-mcp"
+      * Version: "1.0.0"
+      * Protocol Specification: "2025-11-25"
+
+4.2 Real MCP Tool Implementation (No static mocks!)
+    Implement all 8 core tools defined in idea.md:
+    1. `ingest_source(raw_text: str, title: str, source_type: str) -> dict`
+       - Stores raw source into SQLite `sources` table.
+       - Returns `{"source_id": str, "title": str, "char_count": int}`.
+    2. `find_deadline_candidates(source_id: str) -> list[dict]`
+       - Runs extraction engine against the given source.
+       - Stores candidate rows in `deadlines` with status `needs_review` or
+         `date_unverified`.
+       - Returns candidate objects with evidence spans, provider, date, confidence.
+    3. `get_deadline_evidence(deadline_id: str) -> dict`
+       - Fetches the verbatim quote, source title, and full context snippet.
+       - Guarantees exact 1:1 match with database record.
+    4. `confirm_or_correct_deadline(deadline_id: str, confirmed_date: str, provider_name: str, notes: str) -> dict`
+       - Updates deadline record to status `confirmed` or `upcoming`.
+       - Records previous extraction vs user correction in `audit_logs`.
+    5. `create_follow_up(deadline_id: str, lead_days: list[int], export_calendar: bool) -> dict`
+       - Creates reminder schedule (e.g. 7 days and 1 day prior).
+       - Updates deadline status to `upcoming`.
+       - Generates downloadable `.ics` data if requested.
+    6. `prepare_next_step(deadline_id: str) -> dict`
+       - Returns action checklist and validated official support URL
+         (e.g., Netflix cancellation page, Airtel payment page, HDFC ERGO renewal).
+       - Clearly marks limitation if no verified official URL exists.
+    7. `update_deadline_status(deadline_id: str, new_status: str, resolution_notes: str) -> dict`
+       - Transitions state: `completed`, `cancelled`, `action_needed`.
+       - Strictly enforces: user confirmation != external provider payment.
+    8. `list_deadlines(status_filter: str, category_filter: str) -> list[dict]`
+       - Returns filtered active, upcoming, overdue, or resolved obligations.
+
+4.3 Tool Schema & JSON-RPC Compliance
+    - Define strict Pydantic schemas for all inputs and outputs.
+    - Full error handling conforming to JSON-RPC 2.0 error codes:
+      * Invalid params (-32602)
+      * Method not found (-32601)
+      * Internal error (-32603) with readable diagnostic message.
+
+4.4 Verification & Validation Checklist:
+    [ ] Direct curl / HTTP test sending `tools/list` returns all 8 registered tools
+        with accurate parameter definitions.
+    [ ] Direct `tools/call` for `ingest_source` followed by `find_deadline_candidates`
+        successfully executes and commits to SQLite.
+    [ ] Response headers and SSE streams comply with MCP spec 2025-11-25.
+
+================================================================================
+PHASE 5: BACKEND APPLICATION LAYER, AGENT HOST & MCP CLIENT INTEGRATION
+================================================================================
+Goal: Connect the web application to the MCP server using a real MCP client
+      bridge, enabling conversational queries and direct tool invocation with
+      complete tool-call observability for hackathon judges.
+
+5.1 FastAPI Backend Endpoints (`backend/app/main.py`)
+    - `/api/sources/upload`: Multipart file / text ingestion route.
+    - `/api/deadlines`: Direct REST route for querying and managing deadlines.
+    - `/api/deadlines/{id}/ics`: Downloadable iCalendar file endpoint.
+    - `/api/agent/chat`: Conversational agent endpoint that parses natural
+      language (e.g., "I started a free trial, tell me when it charges me"),
+      routes requests through the MCP client, invokes MCP tools, and returns
+      evidence-backed responses.
+    - `/api/mcp/log`: Live stream / history of all MCP tool invocations
+      (tool name, input arguments, execution time, output payload, status).
+
+5.2 In-Process MCP Client Bridge (`backend/app/services/mcp_client.py`)
+    - Client connects directly to the Streamable HTTP MCP server endpoint.
+    - Captures and logs all tool invocations for the visual inspection panel.
+    - Guarantees that every conversational action actually passes through the
+      MCP protocol layer rather than bypassing it with private function calls.
+
+5.3 Deterministic Conversational Agent Handler
+    - Maps common natural language intents to MCP tools:
+      * "Check this bill / trial email" -> `ingest_source` -> `find_deadline_candidates`
+      * "Show evidence for Netflix" -> `get_deadline_evidence`
+      * "Confirm this date" -> `confirm_or_correct_deadline`
+      * "Remind me 3 days before" -> `create_follow_up`
+      * "How do I cancel?" -> `prepare_next_step`
+      * "I paid this bill" -> `update_deadline_status`
+      * "What is due this week?" -> `list_deadlines`
+    - Formats output responses strictly emphasizing:
+      * The extracted date in bold.
+      * The exact quoted evidence.
+      * Explicit confirmation prompts (never assuming confirmation).
+
+5.4 Verification & Validation Checklist:
+    [ ] End-to-end API test: upload text -> agent responds with evidence quote
+        and candidate date -> MCP log records `ingest_source` and
+        `find_deadline_candidates` invocations.
+    [ ] `.ics` download endpoint returns valid RFC 5545 calendar file.
+
+================================================================================
+PHASE 6: FRONTEND DEVELOPMENT (REACT + VITE WEB DEMO CLIENT & MCP VISUALIZER)
+================================================================================
+Goal: Build a high-aesthetic, modern web client that provides an intuitive
+      deadline-management experience, simulates an Alexa+ assistant, and
+      features an observable real-time MCP Tool-Call Inspector for judges.
+
+6.1 Design System & Layout (`frontend/src/styles/index.css`)
+    - Aesthetics: Deep slate / dark-mode theme, sleek typography (Inter/Outfit),
+      refined glassmorphic cards, vibrant status accents (emerald for confirmed,
+      amber for review, rose for overdue, indigo for active).
+    - Accessible layout with three primary columns/sections:
+      1. Left Sidebar: Source Upload (file dropzone, sample document quick-loaders,
+         status filter badges).
+      2. Center Stage: Candidate Review & Active Deadline Tracker (interactive
+         cards with collapsible evidence drawers, next-step checklists, and
+         one-click .ics export).
+      3. Right Panel: Dual-mode View:
+         * "Simulated Alexa+ Assistant" (Voice/Chat conversational interface)
+         * "Live MCP Protocol Inspector" (Real-time log of tool calls, inputs,
+           execution latency, and JSON-RPC payloads).
+
+6.2 Core UI Components
+    - `SourceUploader.jsx`:
+      * Drag-and-drop file uploader supporting .txt, .eml, .pdf.
+      * Direct paste textarea for emails/SMS snippets.
+      * "Quick Demo Scenarios" picker (preloads Scenario A, B, C, D samples
+        with a single click for seamless video recording).
+    - `CandidateReviewCard.jsx`:
+      * Prominently displays: Provider, Date, Category, Amount.
+      * Split-view showing Candidate Details side-by-side with Verbatim Evidence.
+      * Action buttons: [Confirm Date], [Edit Date / Provider], [Dismiss].
+      * Warning banner if `date_unverified` with guidance to input exact date.
+    - `DeadlineList.jsx`:
+      * Tabs: "Action Needed", "Upcoming Deadlines", "Needs Review", "Completed".
+      * Sorting: Due soonest first, highlighted warning badges for items due <3 days.
+      * Task status updater: Mark as "Action Taken", "Mark Paid", "Mark Cancelled".
+    - `EvidenceViewer.jsx`:
+      * Visual document preview highlighting the exact sentence/characters
+        from which the deadline was derived.
+    - `McpToolCallLog.jsx`:
+      * Expandable JSON-RPC tool-call cards showing:
+        `mcp.tools/call: ingest_source` -> 200 OK (14ms)
+        `mcp.tools/call: find_deadline_candidates` -> 200 OK (22ms)
+      * Proves to judges that the app is powered by real MCP tools.
+
+6.3 Verification & Validation Checklist:
+    [ ] UI responsive and visually stunning across desktop viewports.
+    [ ] Sample loader instantly populates input and triggers real backend pipeline.
+    [ ] Tool call log updates automatically within <100ms of any action.
+    [ ] No console errors or broken styling.
+
+================================================================================
+PHASE 7: END-TO-END SCENARIOS & FOLLOW-THROUGH WORKFLOWS (SCENARIOS A TO D)
+================================================================================
+Goal: Implement and thoroughly polish the four benchmark scenarios defined in
+      idea.md to ensure bulletproof demonstration in the hackathon video.
+
+7.1 Scenario A: Free-Trial Renewal Cancellation
+    - Test Input: Confirmation email for streaming service trial ("Your 14-day
+      free trial ends on October 20. Your card will be charged ₹499/month unless
+      cancelled 24 hours prior").
+    - Expected Workflow:
+      * Extracts candidate date: 2026-10-20.
+      * Quotes exact sentence in evidence pane.
+      * User confirms date and sets reminders (3 days before, 1 day before).
+      * `prepare_next_step` provides direct cancellation guide: "Go to Account >
+        Subscriptions > Cancel Membership".
+      * User marks "Cancelled" -> task moves to Completed with status `cancelled`.
+
+7.2 Scenario B: Annual Health / Vehicle Insurance Premium
+    - Test Input: Policy notice email/PDF excerpt ("Policy No: HDFC-98213. Your
+      annual premium of ₹14,250 is due on November 05, 2026 to ensure continuous
+      coverage").
+    - Expected Workflow:
+      * Extracts provider: "HDFC ERGO", Date: 2026-11-05, Amount: ₹14,250.
+      * Surfaces warning that late payment may lapse coverage (quoted directly).
+      * Creates advance reminder: 14 days and 3 days before.
+      * Status remains pending until user records payment confirmation.
+
+7.3 Scenario C: Recurring Household Bills Management
+    - Test Input: Batch ingestion of broadband notice (Wi-Fi), electricity bill,
+      and mobile plan validity message.
+    - Expected Workflow:
+      * Correctly classifies different obligation types:
+        - Wi-Fi: Bill due date.
+        - Mobile: Plan validity expiration date.
+        - Electricity: Fixed payment deadline with bill amount.
+      * Aggregates items into unified chronological "Upcoming" dashboard.
+      * Allows filtering by category ('utility', 'broadband', 'mobile').
+
+7.4 Scenario D: Date Uncertainty Handling (Integrity Check)
+    - Test Input: Vague email stating: "Your annual maintenance fee will be due
+      sometime near the end of the month."
+    - Expected Workflow:
+      * System refuses to invent an arbitrary day (e.g. 30th or 31st).
+      * Labels deadline as `date_unverified` with status `needs_review`.
+      * Displays message: "A deadline was mentioned ('near the end of the month'),
+        but no exact date could be verified from the source. Please check the
+        official account or input the exact date."
+      * Prevents false calendar reminders until confirmed.
+
+7.5 Verification & Validation Checklist:
+    [ ] All 4 scenarios tested repeatedly with deterministic, repeatable results.
+    [ ] UI feedback is instantaneous, informative, and displays exact evidence.
+
+================================================================================
+PHASE 8: SYNTHETIC TESTING, ACCURACY BENCHMARKING & FRICTION LOGGING
+================================================================================
+Goal: Validate extraction precision over a synthetic test dataset of 25+
+      documents, measure execution latencies, and prepare the official Friction
+      Log to qualify for the 10% judging bonus.
+
+8.1 Synthetic Benchmark Dataset (`sample_data/`)
+    - Create 25 realistic, synthetic documents (no personal or sensitive data!):
+      * 6 Subscription / Free Trial emails.
+      * 6 Utility & Telecom bills (broadband, electricity, mobile recharge).
+      * 5 Insurance policy renewal letters.
+      * 4 Ambiguous / Date-less documents (testing refusal to hallucinate).
+      * 4 Non-deadline documents (newsletters, spam, generic notifications).
+    - Write automated test script `tests/test_benchmark.py`:
+      * Evaluates Date Accuracy (Exact Match vs Ground Truth).
+      * Evaluates Evidence Verification (Does evidence contain extracted date?).
+      * Evaluates Category Classification Precision.
+
+8.2 Friction Log Compilation (`docs/friction_log.md` — 10% Bonus Opportunity)
+    - Document real developer experience implementing MCP over Streamable HTTP:
+      * Entry 1: Streamable HTTP SSE connection lifecycle and reconnection
+        handling under Python MCP SDK.
+      * Entry 2: Handling JSON-RPC 2.0 error framing for complex schema validation.
+      * Entry 3: Token efficiency of sending evidence spans vs full document bodies.
+      * Entry 4: Client-side tool call inspection ergonomics in web-based agents.
+    - Structure per Devpost guidelines:
+      * Task attempted
+      * Steps taken
+      * Expected result vs Actual result
+      * Severity rating (Low / Medium / High)
+      * Implemented workaround
+      * Actionable recommendation for the Amazon / MCP developer teams.
+
+8.3 Product Feedback Report (`docs/product_feedback.md`)
+    - Document feedback for tools and SDKs utilized (MCP SDK, FastAPI, Vite):
+      * Purpose of tool
+      * What worked smoothly
+      * What needs improvement
+      * Onboarding & documentation experience
+      * Would we use it again (Yes/No + Rationale).
+
+8.4 Verification & Validation Checklist:
+    [ ] Benchmark passes with 100% precision on date-evidence attribution.
+    [ ] `friction_log.md` fully drafted with all 6 required fields per entry.
+    [ ] `product_feedback.md` complete and formatted for Devpost submission.
+
+================================================================================
+PHASE 9: PRODUCTION PACKAGING, LOCAL READINESS & ZERO-COST DEPLOYMENT STRATEGY
+================================================================================
+Goal: Package the application for seamless local evaluation by judges, with an
+      optional 100% free-tier cloud deployment that incurs ₹0 risk.
+
+9.1 Local One-Command Runner
+    - Create unified root launch scripts:
+      * `run_demo.bat` (Windows PowerShell / CMD)
+      * `run_demo.sh` (Linux / macOS)
+    - Script automatically:
+      1. Activates Python virtual environment and checks dependencies.
+      2. Initializes SQLite database if not present.
+      3. Launches FastAPI + MCP server in background (port 8000).
+      4. Builds or runs Vite frontend (port 5173).
+      5. Opens default browser to http://localhost:5173.
+
+9.2 Containerization & Zero-Cost Cloud Option (Optional)
+    - Multi-stage `Dockerfile`:
+      * Stage 1: Build React static assets (`npm run build`).
+      * Stage 2: Python 3.11-slim container serving FastAPI + mounted SQLite volume
+        and serving static frontend bundle directly from `/static`.
+    - Zero-Cost Hosting Strategy (Local-first guarantee):
+      * The primary hackathon submission baseline is the local repository + video.
+      * If deployed online, use strictly free, non-converting tiers (e.g. Render
+        free web service or Fly.io free tier without auto-scaling payment methods).
+      * Strictly adhere to: NO payment methods attached that could generate bills.
+
+9.3 Verification & Validation Checklist:
+    [ ] Fresh clone test in an isolated folder runs cleanly via `run_demo.bat`.
+    [ ] All assets, synthetic samples, and documentation verified present.
+
+================================================================================
+PHASE 10: SUBMISSION ASSETS, DEMO VIDEO PRODUCTION & DEVPOST SUBMISSION
+================================================================================
+Goal: Record a compelling <3 minute demo video, verify all submission criteria,
+      and publish the project to Devpost ahead of the deadline.
+
+10.1 Video Script & Screenplay (< 3 Minutes Strict Limit)
+    - 0:00 - 0:25 (The Problem):
+      * Show visual chaos of renewal emails, bill PDFs, and expired trial notices.
+      * Explain why standard reminders fail (they expect the user to already know
+        the date and follow through).
+    - 0:25 - 1:15 (Scenario A - Free Trial Follow-Through):
+      * Drag-and-drop trial email.
+      * Highlight extracted date (Oct 20) and exact evidence quote.
+      * Show MCP Inspector logging `ingest_source` and `find_deadline_candidates`.
+      * Confirm date, show generated reminders and official cancellation instructions.
+    - 1:15 - 1:55 (Scenario B & C - Insurance & Household Bills):
+      * Ingest insurance notice with ₹14,250 premium amount.
+      * Ingest utility notices, showing category differentiation and upcoming list.
+      * Demonstrate calendar export (.ics).
+    - 1:55 - 2:30 (Scenario D & MCP Architecture):
+      * Ingest vague text ("renewal near end of month") -> highlight system's
+        refusal to invent a date, requesting clarification.
+      * Deep-dive into Live MCP Tool-Call Log showing JSON-RPC 2.0 messages over
+        Streamable HTTP transport adhering to spec 2025-11-25.
+    - 2:30 - 3:00 (Summary & Potential Impact):
+      * Recap ₹0 architecture, evidence-backed safety, and Alexa+ track fit.
+
+10.2 GitHub Repository Finalization
+    - Ensure repository is public (or shared with `testing@devpost.com`).
+    - Include open-source license (MIT License).
+    - Comprehensive README.md:
+      * Architecture diagram and system flow.
+      * Quick start instructions (Prerequisites, 1-command launch).
+      * Description of all 8 MCP tools and JSON schemas.
+      * Video link and live demo link (if hosted).
+      * Friction log summary.
+
+10.3 Devpost Submission Checklist
+    [ ] Primary Track selected: "Alexa+".
+    [ ] Title: "Deadline Rescue — Evidence-Backed Deadline & Renewal Agent".
+    [ ] Tagline: "Turns hidden bill, subscription, and renewal notices into
+        evidence-backed tasks over a self-hosted MCP server."
+    [ ] 3-minute video uploaded to YouTube (Public / Unlisted) and linked.
+    [ ] Public GitHub repository link included with open-source license.
+    [ ] Tool/SDK Feedback submitted for all tools used.
+    [ ] Friction log submitted (qualifying for up to 10% bonus).
+    [ ] Final submission confirmed before October 24, 2026, 12:30 AM IST.
+================================================================================
+END OF PHASES DOCUMENT
+================================================================================
