@@ -4,12 +4,15 @@ FastAPI Backend + Streamable HTTP MCP Server Mount
 """
 from contextlib import asynccontextmanager
 from typing import Optional, List
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import init_db
 from app.models import Deadline, DeadlineCreate, DeadlineUpdate, Source, SourceCreate
 from app.services.deadline_service import DeadlineService
+from app.services.calendar_service import generate_ics_content
+from app.mcp_server.server import mcp_server
+from app.mcp_server.transport import mcp_router
 
 
 @asynccontextmanager
@@ -35,6 +38,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount MCP Streamable HTTP / SSE router
+app.include_router(mcp_router)
+
 
 @app.get("/api/health")
 async def health_check():
@@ -58,6 +64,20 @@ async def app_info():
     }
 
 
+@app.get("/api/mcp/tools")
+async def list_mcp_tools():
+    """List all registered MCP tools and their parameter schemas for UI inspection."""
+    tools = await mcp_server.list_tools()
+    return [
+        {
+            "name": t.name,
+            "description": t.description,
+            "inputSchema": getattr(t, "input_schema", None) or getattr(t, "inputSchema", None)
+        }
+        for t in tools
+    ]
+
+
 @app.get("/api/stats")
 async def get_stats():
     return await DeadlineService.get_stats()
@@ -78,6 +98,20 @@ async def get_deadline(deadline_id: str):
     if not deadline:
         raise HTTPException(status_code=404, detail="Deadline not found")
     return deadline
+
+
+@app.get("/api/deadlines/{deadline_id}/ics")
+async def download_deadline_ics(deadline_id: str):
+    deadline = await DeadlineService.get_deadline(deadline_id)
+    if not deadline:
+        raise HTTPException(status_code=404, detail="Deadline not found")
+    reminders = await DeadlineService.get_reminders(deadline_id)
+    ics_text = generate_ics_content(deadline, reminders)
+    return Response(
+        content=ics_text,
+        media_type="text/calendar",
+        headers={"Content-Disposition": f"attachment; filename=deadline-{deadline.id}.ics"}
+    )
 
 
 @app.patch("/api/deadlines/{deadline_id}", response_model=Deadline)
