@@ -4,8 +4,9 @@ from contextlib import asynccontextmanager
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException, Query, Response, UploadFile, File, Form, Request, Header
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from app.config import settings
+from app.config import settings, BASE_DIR
 from app.database import init_db
 from app.schemas import Deadline, DeadlineCreate, DeadlineUpdate, Source, SourceCreate, ChatRequest, Reminder
 from app.services.deadline_service import DeadlineService
@@ -372,3 +373,10 @@ async def delete_deadline(deadline_id: str):
 @app.get("/api/deadlines/{deadline_id}/audit")
 async def get_deadline_audit(deadline_id: str):
     return await DeadlineService.get_audit_logs(deadline_id)
+
+
+# Production mount: serve pre-built React 19 frontend if available
+frontend_dist = BASE_DIR.parent / "frontend" / "dist"
+if frontend_dist.exists() and (frontend_dist / "index.html").exists():
+    app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="frontend")
+
