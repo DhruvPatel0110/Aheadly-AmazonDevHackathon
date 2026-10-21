@@ -37,7 +37,8 @@ def parse_email_input(email_bytes_or_text: bytes | str, default_title: str = "Em
     Parse email from raw bytes (.eml) or text format.
     Extracts Subject, From, Date, and plain text content.
     """
-    if isinstance(email_bytes_or_text, str):
+    is_str = isinstance(email_bytes_or_text, str)
+    if is_str:
         msg = email.message_from_string(email_bytes_or_text, policy=policy.default)
     else:
         msg = email.message_from_bytes(email_bytes_or_text, policy=policy.default)
@@ -56,22 +57,39 @@ def parse_email_input(email_bytes_or_text: bytes | str, default_title: str = "Em
                 continue
 
             if content_type == "text/plain":
-                payload = part.get_payload(decode=True)
-                if payload:
-                    body_text += payload.decode(part.get_content_charset() or "utf-8", errors="replace") + "\n"
+                if is_str:
+                    text_part = part.get_payload(decode=False)
+                    if text_part:
+                        body_text += str(text_part) + "\n"
+                else:
+                    payload = part.get_payload(decode=True)
+                    if payload:
+                        body_text += payload.decode(part.get_content_charset() or "utf-8", errors="replace") + "\n"
             elif content_type == "text/html" and not body_text:
-                payload = part.get_payload(decode=True)
-                if payload:
-                    html_str = payload.decode(part.get_content_charset() or "utf-8", errors="replace")
-                    body_text += strip_html(html_str) + "\n"
+                if is_str:
+                    html_part = part.get_payload(decode=False)
+                    if html_part:
+                        body_text += strip_html(str(html_part)) + "\n"
+                else:
+                    payload = part.get_payload(decode=True)
+                    if payload:
+                        html_str = payload.decode(part.get_content_charset() or "utf-8", errors="replace")
+                        body_text += strip_html(html_str) + "\n"
     else:
         content_type = msg.get_content_type()
-        payload = msg.get_payload(decode=True)
-        if payload:
-            text = payload.decode(msg.get_content_charset() or "utf-8", errors="replace")
-            body_text = strip_html(text) if content_type == "text/html" else text
+        if is_str:
+            payload = msg.get_payload(decode=False)
+            if payload:
+                body_text = strip_html(str(payload)) if content_type == "text/html" else str(payload)
+            else:
+                body_text = ""
         else:
-            body_text = msg.get_payload() or ""
+            payload = msg.get_payload(decode=True)
+            if payload:
+                text = payload.decode(msg.get_content_charset() or "utf-8", errors="replace")
+                body_text = strip_html(text) if content_type == "text/html" else text
+            else:
+                body_text = msg.get_payload() or ""
 
     if not body_text.strip():
         # Fallback to string representation if parsing had no payload

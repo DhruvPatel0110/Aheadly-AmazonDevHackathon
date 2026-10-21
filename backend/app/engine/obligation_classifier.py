@@ -12,13 +12,45 @@ from app.engine.category_rules import (
     extract_amount_and_currency
 )
 from app.models import DeadlineStatus, VerificationStatus
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
 
 class AnalysisEngine:
+    last_metadata: Dict[str, Any] = {"optional_layer": "skipped (disabled)"}
+
     @staticmethod
+    def check_optional_ollama_layer() -> str:
+        """
+        Check optional Ollama semantic pass availability.
+        Never raises. If disabled, returns 'skipped (disabled)'.
+        If enabled but unreachable within 1s, returns 'skipped (unreachable)'.
+        """
+        if not settings.ollama_enabled:
+            return "skipped (disabled)"
+        import urllib.request
+        try:
+            url = f"{settings.ollama_url.rstrip('/')}/api/tags"
+            req = urllib.request.Request(url, headers={"User-Agent": "DeadlineRescue/1.0"})
+            with urllib.request.urlopen(req, timeout=1.0) as resp:
+                if resp.status == 200:
+                    return "active"
+                return "skipped (unreachable)"
+        except Exception:
+            return "skipped (unreachable)"
+
+    @classmethod
+    def extract_with_metadata(cls, raw_text: str, source_id: str = "", source_title: str = "") -> Dict[str, Any]:
+        candidates = cls.extract_obligations(raw_text, source_id, source_title)
+        return {
+            "candidates": candidates,
+            "metadata": dict(cls.last_metadata)
+        }
+
+    @classmethod
     def extract_obligations(
+        cls,
         raw_text: str,
         source_id: str = "",
         source_title: str = ""
@@ -27,6 +59,9 @@ class AnalysisEngine:
         Main extraction pipeline.
         Transforms raw document/message text into structured, evidence-backed candidate deadlines.
         """
+        optional_status = cls.check_optional_ollama_layer()
+        cls.last_metadata = {"optional_layer": optional_status}
+
         if not raw_text or not raw_text.strip():
             return []
 
@@ -96,7 +131,8 @@ class AnalysisEngine:
                 "official_url": final_provider.get("official_url"),
                 "next_step_instructions": next_steps,
                 "status": status,
-                "requires_user_input": is_vague or (status == DeadlineStatus.NEEDS_REVIEW)
+                "requires_user_input": is_vague or (status == DeadlineStatus.NEEDS_REVIEW),
+                "optional_layer": optional_status
             })
 
         return results

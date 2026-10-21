@@ -18,6 +18,9 @@ def generate_ics_content(deadline: Deadline, reminders: Optional[List[Reminder]]
     cal.add('prodid', '-//Deadline Rescue//Alexa+ Hackathon 2026//EN')
     cal.add('version', '2.0')
 
+    if not deadline.candidate_date or deadline.candidate_date == "UNVERIFIED":
+        raise ValueError(f"Cannot generate calendar export for unverified deadline obligation '{deadline.id}'.")
+
     # Parse candidate date
     try:
         dt = datetime.fromisoformat(deadline.candidate_date.replace("Z", "+00:00"))
@@ -25,7 +28,7 @@ def generate_ics_content(deadline: Deadline, reminders: Optional[List[Reminder]]
         try:
             dt = datetime.strptime(deadline.candidate_date[:10], "%Y-%m-%d")
         except ValueError:
-            dt = datetime.now(timezone.utc) + timedelta(days=7)
+            raise ValueError(f"Invalid deadline date format '{deadline.candidate_date}' for calendar export.")
 
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)

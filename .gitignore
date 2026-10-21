@@ -33,7 +33,13 @@ htmlcov/
 *.sqlite
 *.sqlite3
 *.db
-backend/data/*.db
+*.bak
+*.db.bak
+backend/data/
+
+# Hackathon Planning & Scratch Notes
+phases.txt
+idea.md
 
 # Node / Frontend
 frontend/node_modules/
@@ -57,3 +63,4 @@ pnpm-debug.log*
 *.swo
 .DS_Store
 Thumbs.db
+

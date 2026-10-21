@@ -145,6 +145,43 @@ async def list_deadlines(
     )
 
 
+def validate_tool_arguments(tool_name: str, arguments: dict, schema: dict) -> Optional[str]:
+    """
+    Validate tool call arguments against its inputSchema.
+    Returns error message string on failure, or None on success.
+    """
+    if not isinstance(arguments, dict):
+        return f"Arguments for tool '{tool_name}' must be an object, got {type(arguments).__name__}"
+
+    # Check required fields
+    required = schema.get("required", [])
+    for field in required:
+        if field not in arguments:
+            return f"Missing required argument: '{field}' for tool '{tool_name}'"
+        if arguments[field] is None:
+            return f"Required argument '{field}' cannot be null for tool '{tool_name}'"
+
+    # Check types of provided arguments
+    properties = schema.get("properties", {})
+    for arg_name, arg_val in arguments.items():
+        if arg_name in properties:
+            prop_def = properties[arg_name]
+            expected_type = prop_def.get("type")
+            if expected_type == "string" and not isinstance(arg_val, str):
+                return f"Invalid type for argument '{arg_name}': expected string, got {type(arg_val).__name__}"
+            elif expected_type == "integer" and (isinstance(arg_val, bool) or not isinstance(arg_val, int)):
+                return f"Invalid type for argument '{arg_name}': expected integer, got {type(arg_val).__name__}"
+            elif expected_type == "number" and (isinstance(arg_val, bool) or not isinstance(arg_val, (int, float))):
+                return f"Invalid type for argument '{arg_name}': expected number, got {type(arg_val).__name__}"
+            elif expected_type == "boolean" and not isinstance(arg_val, bool):
+                return f"Invalid type for argument '{arg_name}': expected boolean, got {type(arg_val).__name__}"
+            elif expected_type == "array" and not isinstance(arg_val, list):
+                return f"Invalid type for argument '{arg_name}': expected array, got {type(arg_val).__name__}"
+            elif expected_type == "object" and not isinstance(arg_val, dict):
+                return f"Invalid type for argument '{arg_name}': expected object, got {type(arg_val).__name__}"
+    return None
+
+
 # ---------------------------------------------------------------------------
 # JSON-RPC 2.0 Direct Handler for HTTP POST & Test Compatibility
 # ---------------------------------------------------------------------------
@@ -182,6 +219,9 @@ async def handle_jsonrpc_request(payload: Dict[str, Any]) -> Dict[str, Any]:
                     }
                 }
             }
+        # 1.5. Initialized Notification
+        elif method == "notifications/initialized":
+            return {}
 
         # 2. Tools List
         elif method == "tools/list":
@@ -212,6 +252,28 @@ async def handle_jsonrpc_request(payload: Dict[str, Any]) -> Dict[str, Any]:
                     "id": req_id,
                     "error": {"code": -32602, "message": "Missing 'name' parameter for tools/call"}
                 }
+
+            tools = await mcp_server.list_tools()
+            target_tool = next((t for t in tools if t.name == tool_name), None)
+            if not target_tool:
+                return {
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "error": {"code": -32601, "message": f"Method/Tool '{tool_name}' not found"}
+                }
+
+            schema = getattr(target_tool, "input_schema", None) or getattr(target_tool, "inputSchema", None)
+            if hasattr(schema, "model_dump"):
+                schema = schema.model_dump()
+
+            if schema:
+                val_err = validate_tool_arguments(tool_name, arguments, schema)
+                if val_err:
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "error": {"code": -32602, "message": val_err}
+                    }
 
             # Dispatch tool call
             if tool_name == "ingest_source":

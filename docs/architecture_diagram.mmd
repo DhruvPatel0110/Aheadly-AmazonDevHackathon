@@ -1,0 +1,70 @@
+graph TB
+    subgraph UI ["Frontend Client (React 19 + Vite)"]
+        A1[Simulated Alexa+ Conversational Panel]
+        A2[Deadline Cards & Evidence Inspection View]
+        A3[Live MCP JSON-RPC Inspector & Protocol Log]
+    end
+
+    subgraph Backend ["FastAPI Application Backend (Port 8000)"]
+        B1["/api/sources/upload<br/>(Multipart & Text Ingestion)"]
+        B2["/api/agent/chat<br/>(Natural Language Intent Router)"]
+        B3["/api/deadlines & /api/stats<br/>(Dashboard State)"]
+        B4["/api/deadlines/{id}/calendar<br/>(RFC 5545 .ics Generator)"]
+        B5["/api/mcp/log<br/>(Judge Protocol Audit Trail)"]
+
+        subgraph ClientBridge ["MCP Client Layer"]
+            C1["MCPClientBridge<br/>(httpx.AsyncClient / Streamable HTTP)"]
+        end
+    end
+
+    subgraph MCPServer ["Self-Hosted MCP Server (Spec 2025-11-25+)"]
+        M0["POST /mcp & GET /mcp/sse<br/>(JSON-RPC 2.0 Wire Transport)"]
+        
+        subgraph Tools ["8 Genuine MCP Tools"]
+            T1["ingest_source"]
+            T2["find_deadline_candidates"]
+            T3["get_deadline_evidence"]
+            T4["confirm_or_correct_deadline"]
+            T5["create_follow_up"]
+            T6["prepare_next_step"]
+            T7["update_deadline_status"]
+            T8["list_deadlines"]
+        end
+    end
+
+    subgraph Engine ["Deterministic Extraction & Verification Engine"]
+        E1["Text Normalizer & SHA-256 Hasher"]
+        E2["Email Parser (RFC 5322 & Unicode UTF-8)"]
+        E3["PDF Parser (Digital Extraction & Scanned Guard)"]
+        E4["Deterministic Date Extractor (Verbatim Evidence Slices)"]
+        E5["Provider Rules Catalog (90+ Entities)"]
+        E6["Obligation Classifier (Categories & Recurrence)"]
+        E7["Optional Ollama Layer (Local Fallback Graceful Skip)"]
+    end
+
+    subgraph Storage ["SQLite 3 Local Database (Strictly ₹0 Budget)"]
+        S1[("sources<br/>(file_hash UNIQUE, text)")]
+        S2[("deadlines<br/>(candidate_date, evidence, status CHECK)")]
+        S3[("reminders<br/>(remind_at, lead_days, status CHECK)")]
+        S4[("audit_logs<br/>(diffs, actions, timestamps)")]
+    end
+
+    %% Flows
+    A1 -->|POST /api/agent/chat| B2
+    A2 -->|GET /api/deadlines| B3
+    A2 -->|GET .ics| B4
+    A3 -->|GET /api/mcp/log| B5
+    A1 -->|File/Text Upload| B1
+
+    B1 --> C1
+    B2 --> C1
+    C1 -->|JSON-RPC 2.0 over HTTP POST /mcp| M0
+    M0 --> Tools
+
+    T1 --> Engine
+    T2 --> Engine
+    Engine --> S1
+    Engine --> S2
+    Tools --> Storage
+    B3 --> Storage
+    B4 --> Storage

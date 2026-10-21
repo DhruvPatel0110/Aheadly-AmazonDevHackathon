@@ -1,0 +1,252 @@
+[
+  {
+    "id": "sub_01",
+    "file": "sub_01_netflix_trial.txt",
+    "text": "Your Netflix 30-day trial ends on October 20, 2026. Your account will renew at \u20b9499 per month.",
+    "expected_date": "2026-10-20",
+    "expected_category": "subscription",
+    "expected_provider": "Netflix",
+    "is_deadline": true,
+    "is_ambiguous": false
+  },
+  {
+    "id": "sub_02",
+    "file": "sub_02_spotify_premium.txt",
+    "text": "Your Spotify Premium subscription renews on 2026-11-01. Amount \u20b9119 will be charged to your card.",
+    "expected_date": "2026-11-01",
+    "expected_category": "subscription",
+    "expected_provider": "Spotify",
+    "is_deadline": true,
+    "is_ambiguous": false
+  },
+  {
+    "id": "sub_03",
+    "file": "sub_03_prime_annual.txt",
+    "text": "Your Amazon Prime annual membership renews on 2026-12-15. Renewal fee of \u20b91,499 applies.",
+    "expected_date": "2026-12-15",
+    "expected_category": "subscription",
+    "expected_provider": "Amazon Prime",
+    "is_deadline": true,
+    "is_ambiguous": false
+  },
+  {
+    "id": "sub_04",
+    "file": "sub_04_hotstar_renewal.txt",
+    "text": "Your streaming subscription renews on 2026-11-28. Annual fee \u20b9899 due.",
+    "expected_date": "2026-11-28",
+    "expected_category": "subscription",
+    "expected_provider": "Service Provider",
+    "is_deadline": true,
+    "is_ambiguous": false
+  },
+  {
+    "id": "sub_05",
+    "file": "sub_05_youtube_trial.txt",
+    "text": "Your free trial ends on October 30, 2026. Cancel before to avoid charges of \u20b9129.",
+    "expected_date": "2026-10-30",
+    "expected_category": "subscription",
+    "expected_provider": "Service Provider",
+    "is_deadline": true,
+    "is_ambiguous": false
+  },
+  {
+    "id": "sub_06",
+    "file": "sub_06_adobe_creative.txt",
+    "text": "Your Creative Cloud subscription renews on 2026-11-12 for monthly fee \u20b94,230.",
+    "expected_date": "2026-11-12",
+    "expected_category": "subscription",
+    "expected_provider": "Service Provider",
+    "is_deadline": true,
+    "is_ambiguous": false
+  },
+  {
+    "id": "util_01",
+    "file": "util_01_airtel_fiber.txt",
+    "text": "Airtel Broadband bill payment due date: 2026-11-15. Amount due: \u20b9999.",
+    "expected_date": "2026-11-15",
+    "expected_category": "broadband",
+    "expected_provider": "Airtel",
+    "is_deadline": true,
+    "is_ambiguous": false
+  },
+  {
+    "id": "util_02",
+    "file": "util_02_tata_power.txt",
+    "text": "Tata Power electricity bill is due on 2026-11-18. Pay \u20b92,450 to avoid disconnection.",
+    "expected_date": "2026-11-18",
+    "expected_category": "utility",
+    "expected_provider": "Tata Power",
+    "is_deadline": true,
+    "is_ambiguous": false
+  },
+  {
+    "id": "util_03",
+    "file": "util_03_jio_prepaid.txt",
+    "text": "Your Jio prepaid plan validity of \u20b9299 expires on 2026-11-10. Recharge to continue.",
+    "expected_date": "2026-11-10",
+    "expected_category": "mobile",
+    "expected_provider": "Jio",
+    "is_deadline": true,
+    "is_ambiguous": false
+  },
+  {
+    "id": "util_04",
+    "file": "util_04_bescom_bill.txt",
+    "text": "BESCOM electric power bill payment by 2026-11-22 for total \u20b91,840.",
+    "expected_date": "2026-11-22",
+    "expected_category": "utility",
+    "expected_provider": "BESCOM",
+    "is_deadline": true,
+    "is_ambiguous": false
+  },
+  {
+    "id": "util_05",
+    "file": "util_05_fibernet_bill.txt",
+    "text": "Broadband internet bill due on 2026-11-05. Amount payable: \u20b91,150.",
+    "expected_date": "2026-11-05",
+    "expected_category": "broadband",
+    "expected_provider": "Service Provider",
+    "is_deadline": true,
+    "is_ambiguous": false
+  },
+  {
+    "id": "util_06",
+    "file": "util_06_tataplay_dth.txt",
+    "text": "Tata Play DTH subscriber account renewal date: 2026-11-08. Pack price \u20b9450.",
+    "expected_date": "2026-11-08",
+    "expected_category": "dth",
+    "expected_provider": "Tata Play",
+    "is_deadline": true,
+    "is_ambiguous": false
+  },
+  {
+    "id": "ins_01",
+    "file": "ins_01_hdfc_ergo.txt",
+    "text": "Policy No: HDFC-98213. Your annual premium of \u20b914,250 is due on November 05, 2026 to ensure continuous coverage.",
+    "expected_date": "2026-11-05",
+    "expected_category": "insurance",
+    "expected_provider": "HDFC ERGO",
+    "is_deadline": true,
+    "is_ambiguous": false
+  },
+  {
+    "id": "ins_02",
+    "file": "ins_02_icici_lombard.txt",
+    "text": "ICICI Lombard health insurance policy renewal date: 2026-12-01. Premium amount: \u20b918,500.",
+    "expected_date": "2026-12-01",
+    "expected_category": "insurance",
+    "expected_provider": "ICICI Lombard",
+    "is_deadline": true,
+    "is_ambiguous": false
+  },
+  {
+    "id": "ins_03",
+    "file": "ins_03_health_insurance.txt",
+    "text": "Your insurance policy premium of \u20b912,000 is due on 2026-11-20.",
+    "expected_date": "2026-11-20",
+    "expected_category": "insurance",
+    "expected_provider": "Service Provider",
+    "is_deadline": true,
+    "is_ambiguous": false
+  },
+  {
+    "id": "ins_04",
+    "file": "ins_04_life_insurance.txt",
+    "text": "Annual insurance premium of \u20b935,000 renewal on 2026-12-10.",
+    "expected_date": "2026-12-10",
+    "expected_category": "insurance",
+    "expected_provider": "Service Provider",
+    "is_deadline": true,
+    "is_ambiguous": false
+  },
+  {
+    "id": "ins_05",
+    "file": "ins_05_vehicle_insurance.txt",
+    "text": "Motor insurance policy payment due on 2026-11-25. Total premium \u20b98,200.",
+    "expected_date": "2026-11-25",
+    "expected_category": "insurance",
+    "expected_provider": "Service Provider",
+    "is_deadline": true,
+    "is_ambiguous": false
+  },
+  {
+    "id": "amb_01",
+    "file": "amb_01_maintenance.txt",
+    "text": "Your annual maintenance fee will be due sometime near the end of the month.",
+    "expected_date": null,
+    "expected_category": null,
+    "expected_provider": null,
+    "is_deadline": true,
+    "is_ambiguous": true
+  },
+  {
+    "id": "amb_02",
+    "file": "amb_02_gym_membership.txt",
+    "text": "Your fitness center membership renewal is scheduled for sometime this month.",
+    "expected_date": null,
+    "expected_category": null,
+    "expected_provider": null,
+    "is_deadline": true,
+    "is_ambiguous": true
+  },
+  {
+    "id": "amb_03",
+    "file": "amb_03_software_license.txt",
+    "text": "The software subscription renewal will occur early next week.",
+    "expected_date": null,
+    "expected_category": null,
+    "expected_provider": null,
+    "is_deadline": true,
+    "is_ambiguous": true
+  },
+  {
+    "id": "amb_04",
+    "file": "amb_04_hosting_fee.txt",
+    "text": "Cloud hosting maintenance fee is coming up sometime next week.",
+    "expected_date": null,
+    "expected_category": null,
+    "expected_provider": null,
+    "is_deadline": true,
+    "is_ambiguous": true
+  },
+  {
+    "id": "non_01",
+    "file": "non_01_newsletter.txt",
+    "text": "Welcome to our engineering newsletter! We shipped five new open source tools this quarter. Enjoy reading.",
+    "expected_date": null,
+    "expected_category": null,
+    "expected_provider": null,
+    "is_deadline": false,
+    "is_ambiguous": false
+  },
+  {
+    "id": "non_02",
+    "file": "non_02_password_reset.txt",
+    "text": "Security notification: your account password was successfully updated. If you did not make this change, please contact support.",
+    "expected_date": null,
+    "expected_category": null,
+    "expected_provider": null,
+    "is_deadline": false,
+    "is_ambiguous": false
+  },
+  {
+    "id": "non_03",
+    "file": "non_03_order_shipped.txt",
+    "text": "Thank you for your order! Package #98721 has been handed over to courier and is on its way to your address.",
+    "expected_date": null,
+    "expected_category": null,
+    "expected_provider": null,
+    "is_deadline": false,
+    "is_ambiguous": false
+  },
+  {
+    "id": "non_04",
+    "file": "non_04_event_invitation.txt",
+    "text": "You are invited to join our developer hackathon community meetup. Check out the project highlights on GitHub.",
+    "expected_date": null,
+    "expected_category": null,
+    "expected_provider": null,
+    "is_deadline": false,
+    "is_ambiguous": false
+  }
+]

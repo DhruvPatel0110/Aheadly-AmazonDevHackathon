@@ -5,6 +5,7 @@ Coordinates business logic and database persistence using aiosqlite.
 import uuid
 import json
 import logging
+import hashlib
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
 from app.database import get_db
@@ -25,28 +26,54 @@ def _utc_now_iso() -> str:
 class DeadlineService:
     @staticmethod
     async def create_source(source_in: SourceCreate, db_path: Optional[str] = None) -> Source:
-        source_id = str(uuid.uuid4())
-        created_at = _utc_now_iso()
-        
-        query = """
-        INSERT INTO sources (id, title, raw_text, source_type, file_hash, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
         """
+        Create a new source record or return an existing source if file_hash already exists.
+
+        Computes SHA-256 of raw_text if file_hash is not explicitly provided.
+        If a source with the file_hash already exists in the database, returns the existing
+        source with a 'duplicate': True flag and does not insert a new row.
+        """
+        file_hash = source_in.file_hash or hashlib.sha256(source_in.raw_text.encode("utf-8")).hexdigest()
+
         async with get_db(db_path) as db:
+            if file_hash:
+                async with db.execute(
+                    "SELECT id, title, raw_text, source_type, file_hash, created_at FROM sources WHERE file_hash = ?",
+                    (file_hash,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+                    if row:
+                        return Source(
+                            id=row["id"],
+                            title=row["title"],
+                            raw_text=row["raw_text"],
+                            source_type=row["source_type"],
+                            file_hash=row["file_hash"],
+                            created_at=str(row["created_at"]),
+                            duplicate=True
+                        )
+
+            source_id = str(uuid.uuid4())
+            created_at = _utc_now_iso()
+            query = """
+            INSERT INTO sources (id, title, raw_text, source_type, file_hash, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """
             await db.execute(
                 query,
                 (source_id, source_in.title, source_in.raw_text, source_in.source_type.value,
-                 source_in.file_hash, created_at)
+                 file_hash, created_at)
             )
             await db.commit()
-            
+
         return Source(
             id=source_id,
             title=source_in.title,
             raw_text=source_in.raw_text,
             source_type=source_in.source_type,
-            file_hash=source_in.file_hash,
-            created_at=created_at
+            file_hash=file_hash,
+            created_at=created_at,
+            duplicate=False
         )
 
     @staticmethod
@@ -279,6 +306,42 @@ class DeadlineService:
         return await DeadlineService.get_deadline(deadline_id, db_path)
 
     @staticmethod
+    async def get_deadlines_by_source(source_id: str, db_path: Optional[str] = None) -> List[Deadline]:
+        """Retrieve all tracked deadlines associated with a specific ingested source."""
+        query = "SELECT * FROM deadlines WHERE source_id = ? ORDER BY candidate_date ASC"
+        results = []
+        async with get_db(db_path) as db:
+            async with db.execute(query, (source_id,)) as cursor:
+                rows = await cursor.fetchall()
+                for row in rows:
+                    results.append(
+                        Deadline(
+                            id=row["id"],
+                            source_id=row["source_id"],
+                            provider_name=row["provider_name"],
+                            category=row["category"],
+                            obligation_type=row["obligation_type"],
+                            candidate_date=row["candidate_date"],
+                            original_date_str=row["original_date_str"],
+                            amount=row["amount"],
+                            currency=row["currency"],
+                            evidence_snippet=row["evidence_snippet"],
+                            evidence_char_start=row["evidence_char_start"],
+                            evidence_char_end=row["evidence_char_end"],
+                            extraction_confidence=row["extraction_confidence"],
+                            verification_status=row["verification_status"],
+                            recurrence=row["recurrence"],
+                            official_url=row["official_url"],
+                            next_step_instructions=row["next_step_instructions"],
+                            status=row["status"],
+                            owner=row["owner"],
+                            created_at=str(row["created_at"]),
+                            updated_at=str(row["updated_at"])
+                        )
+                    )
+        return results
+
+    @staticmethod
     async def create_reminders(
         deadline_id: str,
         lead_days: List[int],
@@ -288,17 +351,35 @@ class DeadlineService:
         if not deadline:
             raise ValueError(f"Deadline with ID {deadline_id} not found.")
 
+        # Validate candidate date
+        if not deadline.candidate_date or deadline.candidate_date == "UNVERIFIED":
+            raise ValueError(f"Cannot schedule reminders for deadline with unverified date: '{deadline.candidate_date}'")
+
         # Parse target date
         try:
             target_date = datetime.fromisoformat(deadline.candidate_date.replace("Z", "+00:00"))
         except ValueError:
-            target_date = datetime.strptime(deadline.candidate_date[:10], "%Y-%m-%d")
+            try:
+                target_date = datetime.strptime(deadline.candidate_date[:10], "%Y-%m-%d")
+            except ValueError:
+                raise ValueError(f"Invalid deadline date format '{deadline.candidate_date}' for reminder scheduling.")
+
+        if target_date.tzinfo is None:
+            target_date = target_date.replace(tzinfo=timezone.utc)
+
+        # Validate lead days
+        if not lead_days:
+            raise ValueError("lead_days list cannot be empty.")
+        dedup_lead_days = list(dict.fromkeys(lead_days))
+        for d in dedup_lead_days:
+            if d < 0:
+                raise ValueError(f"lead_days cannot contain negative values: {d}")
 
         created_reminders = []
         now = _utc_now_iso()
 
         async with get_db(db_path) as db:
-            for days in lead_days:
+            for days in dedup_lead_days:
                 remind_at = (target_date - timedelta(days=days)).isoformat()
                 rem_id = str(uuid.uuid4())
                 query = """
@@ -325,11 +406,80 @@ class DeadlineService:
             """
             await db.execute(
                 audit_sql,
-                (audit_id, deadline_id, "reminder_created", None, json.dumps({"lead_days": lead_days}), now)
+                (audit_id, deadline_id, "reminder_created", None, json.dumps({"lead_days": dedup_lead_days}), now)
             )
             await db.commit()
 
         return created_reminders
+
+    @staticmethod
+    async def get_due_reminders(now_iso: Optional[str] = None, db_path: Optional[str] = None) -> List[Reminder]:
+        """Query scheduled reminders that have reached or passed their remind_at timestamp."""
+        check_time = now_iso or _utc_now_iso()
+        query = "SELECT * FROM reminders WHERE status = 'scheduled' AND remind_at <= ? ORDER BY remind_at ASC"
+        results = []
+        async with get_db(db_path) as db:
+            async with db.execute(query, (check_time,)) as cursor:
+                rows = await cursor.fetchall()
+                for row in rows:
+                    results.append(
+                        Reminder(
+                            id=row["id"],
+                            deadline_id=row["deadline_id"],
+                            remind_at=str(row["remind_at"]),
+                            lead_days=row["lead_days"],
+                            status=row["status"],
+                            created_at=str(row["created_at"])
+                        )
+                    )
+        return results
+
+    @staticmethod
+    async def process_due_reminders(now_iso: Optional[str] = None, db_path: Optional[str] = None) -> List[Reminder]:
+        """
+        Process due scheduled reminders: transitions status to 'fired' and records an audit log.
+        Prevents duplicate firing and operates local-first at zero cost.
+        """
+        check_time = now_iso or _utc_now_iso()
+        due = await DeadlineService.get_due_reminders(now_iso=check_time, db_path=db_path)
+        if not due:
+            return []
+
+        fired = []
+        now = _utc_now_iso()
+        async with get_db(db_path) as db:
+            for rem in due:
+                await db.execute(
+                    "UPDATE reminders SET status = ? WHERE id = ? AND status = 'scheduled'",
+                    (ReminderStatus.FIRED.value, rem.id)
+                )
+                audit_id = str(uuid.uuid4())
+                await db.execute(
+                    """
+                    INSERT INTO audit_logs (id, deadline_id, action, previous_value, new_value, timestamp)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        audit_id,
+                        rem.deadline_id,
+                        "reminder_fired",
+                        json.dumps({"status": "scheduled", "reminder_id": rem.id}),
+                        json.dumps({"status": "fired", "lead_days": rem.lead_days, "remind_at": rem.remind_at}),
+                        now
+                    )
+                )
+                fired.append(
+                    Reminder(
+                        id=rem.id,
+                        deadline_id=rem.deadline_id,
+                        remind_at=rem.remind_at,
+                        lead_days=rem.lead_days,
+                        status=ReminderStatus.FIRED,
+                        created_at=rem.created_at
+                    )
+                )
+            await db.commit()
+        return fired
 
     @staticmethod
     async def get_reminders(deadline_id: str, db_path: Optional[str] = None) -> List[Reminder]:
@@ -402,3 +552,15 @@ class DeadlineService:
                     "completed": row["completed"] or 0,
                     "date_unverified": row["date_unverified"] or 0,
                 }
+
+    @staticmethod
+    async def clear_all_data(db_path: Optional[str] = None) -> bool:
+        """Clear all sources, deadlines, reminders, and audit logs for demo reset."""
+        async with get_db(db_path) as db:
+            await db.execute("DELETE FROM reminders")
+            await db.execute("DELETE FROM audit_logs")
+            await db.execute("DELETE FROM deadlines")
+            await db.execute("DELETE FROM sources")
+            await db.commit()
+            return True
+

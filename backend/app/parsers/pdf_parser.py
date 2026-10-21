@@ -36,8 +36,7 @@ def parse_pdf_input(pdf_bytes: bytes, default_title: str = "Uploaded Document") 
     # Integrity Check: Check if PDF is a scanned image with no readable text layer
     if len(full_text) < 25:
         raise ScannedPdfError(
-            "No readable text layer found in PDF. This appears to be a scanned document or image. "
-            "Under our strict ₹0 rule, please paste the text directly or provide a digital PDF."
+            "No readable text layer; please paste text or provide a digital PDF"
         )
 
     # Infer title from PDF metadata or first prominent line

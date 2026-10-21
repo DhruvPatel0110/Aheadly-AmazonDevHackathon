@@ -13,7 +13,7 @@ ANCHOR_REGEX = re.compile(
     r'(?i)\b(?:due\s+date|due\s+on|pay\s+before|pay\s+by|payment\s+by|bill\s+due|'
     r'renews\s+on|renewal\s+date|trial\s+ends|free\s+trial\s+ends|expires\s+on|'
     r'expiry\s+date|valid\s+till|validity\s+ends|return\s+before|return\s+window|'
-    r'cancel\s+before|cut-?off|last\s+date)\b[:\s]*([^\n\r,\.;]+)',
+    r'cancel\s+before|cut-?off|last\s+date)\b[:\s]*((?:[^\n\r,\.;]+(?:,\s*20\d{2})?)+)',
     re.IGNORECASE
 )
 
@@ -29,22 +29,22 @@ VAGUE_DATE_PATTERNS = [
 
 # Explicit date regexes
 DATE_PATTERNS = [
-    # YYYY-MM-DD
-    re.compile(r'\b(20\d{2}[-/](?:0[1-9]|1[0-2])[-/](?:0[1-9]|[12]\d|3[01]))\b'),
-    # DD-MM-YYYY or DD/MM/YYYY
-    re.compile(r'\b((?:0[1-9]|[12]\d|3[01])[-/](?:0[1-9]|1[0-2])[-/](?:20\d{2}))\b'),
-    # DD Month YYYY (e.g. 20 October 2026, 20th Oct 2026, 05 November, 2026)
+    # YYYY-MM-DD or YYYY-M-D
+    re.compile(r'\b(20\d{2}[-/](?:0?[1-9]|1[0-2])[-/](?:0?[1-9]|[12]\d|3[01]))\b'),
+    # DD-MM-YYYY or D-M-YYYY or DD/MM/YYYY or D/M/YYYY
+    re.compile(r'\b((?:0?[1-9]|[12]\d|3[01])[-/](?:0?[1-9]|1[0-2])[-/](?:20\d{2}))\b'),
+    # DD Month YYYY (e.g. 20 October 2026, 20th Oct 2026, 05 November, 2026, 25-Nov, 5 Nov 2027)
     re.compile(
-        r'\b((?:0?[1-9]|[12]\d|3[01])(?:st|nd|rd|th)?\s+(?:Jan(?:uary)?|Feb(?:ruary)?|'
+        r'\b((?:0?[1-9]|[12]\d|3[01])(?:st|nd|rd|th)?[-/\s]+(?:Jan(?:uary)?|Feb(?:ruary)?|'
         r'Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|'
-        r'Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)(?:,?\s+20\d{2})?)\b',
+        r'Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)(?:,?\s*20\d{2}|[-\s]+20\d{2})?)\b',
         re.IGNORECASE
     ),
-    # Month DD, YYYY (e.g. October 20, 2026 or Oct 20)
+    # Month DD, YYYY (e.g. October 20, 2026 or Nov 5, 2027)
     re.compile(
         r'\b((?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|'
         r'Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|'
-        r'Dec(?:ember)?)\s+(?:0?[1-9]|[12]\d|3[01])(?:st|nd|rd|th)?(?:,?\s+20\d{2})?)\b',
+        r'Dec(?:ember)?)[-/\s]+(?:0?[1-9]|[12]\d|3[01])(?:st|nd|rd|th)?(?:,?\s*20\d{2}|[-\s]+20\d{2})?)\b',
         re.IGNORECASE
     )
 ]
@@ -57,27 +57,55 @@ RELATIVE_HOUR_PATTERN = re.compile(r'(?i)\bin\s+(\d+)\s+hours?\b')
 def extract_evidence_sentence(text: str, start: int, end: int, window: int = 120) -> Tuple[str, int, int]:
     """
     Extract the surrounding sentence or context window for verbatim evidence attribution.
+    Properly avoids splitting on decimal points in numbers (e.g. 50.00) or abbreviations.
     Returns (snippet, char_start, char_end).
     """
-    # Look back for sentence start (. or \n or start of text)
     left_bound = max(0, start - window)
-    prev_period = max(text.rfind('.', 0, start), text.rfind('\n', 0, start))
-    if prev_period != -1 and prev_period >= left_bound:
-        actual_start = prev_period + 1
-    else:
-        actual_start = left_bound
+    actual_start = left_bound
 
-    # Look ahead for sentence end
+    # Look backward from start for a real sentence delimiter
+    for i in range(start - 1, left_bound - 1, -1):
+        ch = text[i]
+        if ch == '\n':
+            actual_start = i + 1
+            break
+        if ch == '.':
+            # Check if this dot is a decimal point between two digits
+            is_digit_before = (i > 0 and text[i - 1].isdigit())
+            is_digit_after = (i + 1 < len(text) and text[i + 1].isdigit())
+            if is_digit_before and is_digit_after:
+                continue
+            # Check if followed by whitespace or at end
+            if i + 1 == len(text) or text[i + 1].isspace():
+                prefix = text[max(0, i - 4):i].lower()
+                if prefix in ("no", "mr", "dr", "ms"):
+                    continue
+                actual_start = i + 1
+                break
+
     right_bound = min(len(text), end + window)
-    next_period = min(
-        [p for p in [text.find('.', end), text.find('\n', end)] if p != -1] or [right_bound]
-    )
-    if next_period <= right_bound:
-        actual_end = next_period
-    else:
-        actual_end = right_bound
+    actual_end = right_bound
 
-    snippet = text[actual_start:actual_end].strip()
+    # Look forward from end for sentence end
+    for i in range(end, right_bound):
+        ch = text[i]
+        if ch == '\n':
+            actual_end = i
+            break
+        if ch == '.':
+            is_digit_before = (i > 0 and text[i - 1].isdigit())
+            is_digit_after = (i + 1 < len(text) and text[i + 1].isdigit())
+            if is_digit_before and is_digit_after:
+                continue
+            actual_end = i
+            break
+
+    raw_slice = text[actual_start:actual_end]
+    l_strip = len(raw_slice) - len(raw_slice.lstrip())
+    r_strip = len(raw_slice) - len(raw_slice.rstrip())
+    actual_start += l_strip
+    actual_end -= r_strip
+    snippet = text[actual_start:actual_end]
     return snippet, actual_start, actual_end
 
 
@@ -85,33 +113,35 @@ def normalize_parsed_date(raw_date_str: str) -> Optional[str]:
     """
     Parse a raw date string into an ISO YYYY-MM-DD string.
     Correctly distinguishes ISO (YYYY-MM-DD) from Indian formats (DD/MM/YYYY).
+    Preserves explicitly stated years and validates calendar correctness.
     """
     clean_str = re.sub(r'(?<=\d)(st|nd|rd|th)', '', raw_date_str).strip()
 
-    # 1. Exact ISO format match: YYYY-MM-DD
+    # 1. Exact ISO format match: YYYY-MM-DD or YYYY-M-D
     iso_match = re.match(r'^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$', clean_str)
     if iso_match:
         y, m, d = int(iso_match.group(1)), int(iso_match.group(2)), int(iso_match.group(3))
         try:
             return datetime(y, m, d, tzinfo=timezone.utc).strftime("%Y-%m-%d")
         except ValueError:
-            pass
+            return None
 
-    # 2. Exact DD-MM-YYYY or DD/MM/YYYY match
+    # 2. Exact DD-MM-YYYY or D-M-YYYY or DD/MM/YYYY
     dmy_match = re.match(r'^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$', clean_str)
     if dmy_match:
         d, m, y = int(dmy_match.group(1)), int(dmy_match.group(2)), int(dmy_match.group(3))
         try:
             return datetime(y, m, d, tzinfo=timezone.utc).strftime("%Y-%m-%d")
         except ValueError:
-            pass
+            return None
 
-    # 3. Textual dates: "20 October 2026", "November 05, 2026"
+    # 3. Textual dates: "20 October 2026", "November 05, 2027", "May 10, 2028"
     try:
         dt = date_parser.parse(clean_str, dayfirst=True)
-        current_year = datetime.now(timezone.utc).year
-        # If no year was explicitly in string and parsed date is in the past, adjust
-        if str(current_year) not in clean_str and str(current_year + 1) not in clean_str:
+        # Check if year was explicitly present in the input string
+        has_explicit_year = bool(re.search(r'\b(20\d{2})\b', clean_str))
+        if not has_explicit_year:
+            current_year = datetime.now(timezone.utc).year
             if dt.month < datetime.now(timezone.utc).month:
                 dt = dt.replace(year=current_year + 1)
             else:
@@ -121,7 +151,7 @@ def normalize_parsed_date(raw_date_str: str) -> Optional[str]:
         return None
 
 
-def find_candidate_dates(text: str) -> List[Dict[str, Any]]:
+def find_candidate_dates(text: str, source_timestamp: Optional[datetime] = None) -> List[Dict[str, Any]]:
     """
     Scans text for explicit dates, anchored dates, relative terms, and vague terms.
     Returns list of candidate extraction records.
@@ -154,7 +184,8 @@ def find_candidate_dates(text: str) -> List[Dict[str, Any]]:
                             "evidence_char_end": ev_end,
                             "confidence": 0.95,
                             "verification_status": "source_stated",
-                            "is_vague": False
+                            "is_vague": False,
+                            "is_relative": False
                         })
                     found_in_anchor = True
                     break
@@ -181,27 +212,39 @@ def find_candidate_dates(text: str) -> List[Dict[str, Any]]:
                     "evidence_char_end": ev_end,
                     "confidence": 0.85,
                     "verification_status": "source_stated",
-                    "is_vague": False
+                    "is_vague": False,
+                    "is_relative": False
                 })
 
-    # 3. Check for relative dates (e.g., "in 14 days")
-    rel_match = RELATIVE_DAY_PATTERN.search(text)
-    if rel_match and not candidates:
-        days_offset = int(rel_match.group(1))
-        target_dt = datetime.now(timezone.utc) + timedelta(days=days_offset)
-        iso_date = target_dt.strftime("%Y-%m-%d")
-        start, end = rel_match.start(), rel_match.end()
-        evidence, ev_start, ev_end = extract_evidence_sentence(text, start, end)
-        candidates.append({
-            "candidate_date": iso_date,
-            "original_date_str": rel_match.group(0),
-            "evidence_snippet": evidence,
-            "evidence_char_start": ev_start,
-            "evidence_char_end": ev_end,
-            "confidence": 0.80,
-            "verification_status": "estimated",
-            "is_vague": False
-        })
+    # 3. Check for relative dates (e.g., "in 14 days", "in 48 hours")
+    if not candidates:
+        rel_match = RELATIVE_DAY_PATTERN.search(text)
+        rel_hour_match = RELATIVE_HOUR_PATTERN.search(text)
+        if rel_match or rel_hour_match:
+            base_dt = source_timestamp or datetime.now(timezone.utc)
+            if rel_match:
+                days_offset = int(rel_match.group(1))
+                target_dt = base_dt + timedelta(days=days_offset)
+                m = rel_match
+            else:
+                hours_offset = int(rel_hour_match.group(1))
+                target_dt = base_dt + timedelta(hours=hours_offset)
+                m = rel_hour_match
+
+            iso_date = target_dt.strftime("%Y-%m-%d")
+            start, end = m.start(), m.end()
+            evidence, ev_start, ev_end = extract_evidence_sentence(text, start, end)
+            candidates.append({
+                "candidate_date": iso_date,
+                "original_date_str": m.group(0),
+                "evidence_snippet": evidence,
+                "evidence_char_start": ev_start,
+                "evidence_char_end": ev_end,
+                "confidence": 0.80,
+                "verification_status": "estimated",
+                "is_vague": False,
+                "is_relative": True
+            })
 
     # 4. Scenario D: Ambiguity / Uncertainty Detection
     # If text contains vague deadline phrases and NO exact candidate dates were found

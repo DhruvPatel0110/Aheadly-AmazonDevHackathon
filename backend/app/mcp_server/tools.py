@@ -6,10 +6,11 @@ All tools execute genuine database reads, writes, and deterministic logic (no st
 import logging
 from typing import List, Dict, Any, Optional
 from app.models import (
-    SourceCreate, SourceType,
-    DeadlineCreate, DeadlineUpdate, DeadlineCategory, ObligationType,
+    SourceType,
+    DeadlineCategory, ObligationType,
     DeadlineStatus, VerificationStatus, RecurrenceType
 )
+from app.schemas import SourceCreate, DeadlineCreate, DeadlineUpdate
 from app.services.deadline_service import DeadlineService
 from app.services.calendar_service import generate_ics_content
 from app.parsers.text_parser import parse_text_input
@@ -37,8 +38,9 @@ class DeadlineRescueTools:
             parsed = parse_text_input(raw_text, default_title=title or "Pasted Document")
             stype = SourceType.MANUAL if source_type == "manual" else SourceType.EMAIL
 
+        final_title = title.strip() if (title and title.strip()) else parsed["title"]
         source_in = SourceCreate(
-            title=parsed["title"],
+            title=final_title,
             raw_text=parsed["raw_text"],
             source_type=stype,
             file_hash=parsed["file_hash"]
@@ -70,29 +72,50 @@ class DeadlineRescueTools:
             source_title=source.title
         )
 
+        existing_deadlines = await DeadlineService.get_deadlines_by_source(source.id)
         persisted_candidates = []
         for cand in raw_candidates:
-            deadline_in = DeadlineCreate(
-                source_id=source.id,
-                provider_name=cand["provider_name"],
-                category=cand["category"],
-                obligation_type=cand["obligation_type"],
-                candidate_date=cand["candidate_date"],
-                original_date_str=cand.get("original_date_str"),
-                amount=cand.get("amount"),
-                currency=cand.get("currency", "INR"),
-                evidence_snippet=cand["evidence_snippet"],
-                evidence_char_start=cand.get("evidence_char_start"),
-                evidence_char_end=cand.get("evidence_char_end"),
-                extraction_confidence=cand["extraction_confidence"],
-                verification_status=cand["verification_status"],
-                recurrence=cand["recurrence"],
-                official_url=cand.get("official_url"),
-                next_step_instructions=cand.get("next_step_instructions"),
-                status=cand["status"]
-            )
-            saved = await DeadlineService.create_deadline(deadline_in)
-            persisted_candidates.append(saved.model_dump())
+            # Check if this candidate obligation was already extracted for this source
+            matching = None
+            for ed in existing_deadlines:
+                same_provider = ed.provider_name.strip().lower() == cand["provider_name"].strip().lower()
+                same_obligation = (
+                    ed.obligation_type == cand["obligation_type"] or 
+                    getattr(ed.obligation_type, "value", str(ed.obligation_type)) == getattr(cand["obligation_type"], "value", str(cand["obligation_type"]))
+                )
+                same_span = (
+                    (ed.evidence_char_start is not None and ed.evidence_char_start == cand.get("evidence_char_start")) or
+                    (ed.evidence_snippet.strip() == cand["evidence_snippet"].strip())
+                )
+                if same_provider and same_obligation and same_span:
+                    matching = ed
+                    break
+
+            if matching:
+                # Preserve existing deadline, preserving user corrections, status changes, and confirmed dates
+                persisted_candidates.append(matching.model_dump())
+            else:
+                deadline_in = DeadlineCreate(
+                    source_id=source.id,
+                    provider_name=cand["provider_name"],
+                    category=cand["category"],
+                    obligation_type=cand["obligation_type"],
+                    candidate_date=cand["candidate_date"],
+                    original_date_str=cand.get("original_date_str"),
+                    amount=cand.get("amount"),
+                    currency=cand.get("currency", "INR"),
+                    evidence_snippet=cand["evidence_snippet"],
+                    evidence_char_start=cand.get("evidence_char_start"),
+                    evidence_char_end=cand.get("evidence_char_end"),
+                    extraction_confidence=cand["extraction_confidence"],
+                    verification_status=cand["verification_status"],
+                    recurrence=cand["recurrence"],
+                    official_url=cand.get("official_url"),
+                    next_step_instructions=cand.get("next_step_instructions"),
+                    status=cand["status"]
+                )
+                saved = await DeadlineService.create_deadline(deadline_in)
+                persisted_candidates.append(saved.model_dump())
 
         return persisted_candidates
 
