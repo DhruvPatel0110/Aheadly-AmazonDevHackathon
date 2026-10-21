@@ -73,11 +73,15 @@ class MCPClientBridge:
             }
         }
 
-        url = f"http://{settings.host}:{settings.port}/mcp"
-
         try:
+            transport = cls._custom_transport
+            if transport is None:
+                from app.main import app
+                transport = httpx.ASGITransport(app=app)
+
+            url = "http://testserver/mcp"
             try:
-                async with httpx.AsyncClient(transport=cls._custom_transport, timeout=10.0) as client:
+                async with httpx.AsyncClient(transport=transport, timeout=15.0) as client:
                     resp = await client.post(url, json=req_payload)
                     rpc_res = resp.json()
             except httpx.RequestError as req_err:

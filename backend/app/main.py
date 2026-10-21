@@ -269,21 +269,25 @@ async def upload_source(
         raise HTTPException(status_code=400, detail="Either a file or raw_text must be provided.")
 
     # Execute MCP tool pipeline
-    ingest_res = await MCPClientBridge.call_tool("ingest_source", {
-        "raw_text": target_text,
-        "title": target_title,
-        "source_type": stype
-    })
+    try:
+        ingest_res = await MCPClientBridge.call_tool("ingest_source", {
+            "raw_text": target_text,
+            "title": target_title,
+            "source_type": stype
+        })
 
-    candidates = await MCPClientBridge.call_tool("find_deadline_candidates", {
-        "source_id": ingest_res["source_id"]
-    })
+        candidates = await MCPClientBridge.call_tool("find_deadline_candidates", {
+            "source_id": ingest_res["source_id"]
+        })
 
-    return {
-        "source": ingest_res,
-        "candidates": candidates,
-        "candidates_count": len(candidates)
-    }
+        return {
+            "source": ingest_res,
+            "candidates": candidates,
+            "candidates_count": len(candidates)
+        }
+    except Exception as e:
+        logger.exception("Error during source ingestion and candidate extraction")
+        raise HTTPException(status_code=500, detail=f"Source extraction failed: {str(e)}")
 
 
 @app.get("/api/sources/{source_id}", response_model=Source)

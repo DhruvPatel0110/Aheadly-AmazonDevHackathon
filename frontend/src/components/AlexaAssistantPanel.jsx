@@ -57,9 +57,15 @@ export default function AlexaAssistantPanel({ activeDeadlineId, onDeadlineAction
         })
       });
 
-      const data = await res.json();
+      let data = null;
+      const text = await res.text();
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(text || `Server error (${res.status})`);
+      }
       if (!res.ok) {
-        throw new Error(data.detail || 'Failed to chat with Alexa+ agent.');
+        throw new Error(data?.detail || 'Failed to chat with Alexa+ agent.');
       }
 
       const botMsg = {

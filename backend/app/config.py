@@ -21,8 +21,8 @@ class Settings(BaseModel):
     mcp_server_name: str = "aheadly-mcp"
     mcp_protocol_version: str = "2025-11-25"
     db_path: str = os.getenv("DEADLINE_RESCUE_DB_PATH", DEFAULT_DB_PATH)
-    host: str = "127.0.0.1"
-    port: int = 8000
+    host: str = os.getenv("HOST", "127.0.0.1")
+    port: int = int(os.getenv("PORT", "8000"))
     cors_origins: list[str] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",

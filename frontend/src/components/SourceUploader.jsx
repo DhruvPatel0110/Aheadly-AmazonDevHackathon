@@ -80,9 +80,17 @@ export default function SourceUploader({ onSourceIngested, isLoading }) {
         body: formData,
       });
 
-      const data = await res.json();
+      let data = null;
+      const text = await res.text();
+      try {
+        data = JSON.parse(text);
+      } catch {
+        // Response was not JSON
+        throw new Error(text || `Server error (${res.status})`);
+      }
+
       if (!res.ok) {
-        throw new Error(data.detail || 'Failed to ingest source.');
+        throw new Error(data?.detail || `Failed to ingest source (${res.status}).`);
       }
 
       setSuccessMsg(`Successfully ingested "${data.source.title}"! Identified ${data.candidates?.length || 0} candidate(s).`);
@@ -114,9 +122,16 @@ export default function SourceUploader({ onSourceIngested, isLoading }) {
         body: formData,
       });
 
-      const data = await res.json();
+      let data = null;
+      const text = await res.text();
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(text || `Server error (${res.status})`);
+      }
+
       if (!res.ok) {
-        throw new Error(data.detail || 'Failed to upload and parse file.');
+        throw new Error(data?.detail || `Failed to upload and parse file (${res.status}).`);
       }
 
       setSuccessMsg(`File "${file.name}" ingested! Extracted ${data.candidates?.length || 0} candidate(s).`);

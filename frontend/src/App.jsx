@@ -412,7 +412,13 @@ export default function App() {
           active_deadline_id: selectedDeadline?.id || null
         })
       });
-      const data = await res.json();
+      let data = null;
+      const text = await res.text();
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { reply: text || `Server error (${res.status})` };
+      }
       setActiveReply(data);
       fetchDeadlines();
       fetchStats();
