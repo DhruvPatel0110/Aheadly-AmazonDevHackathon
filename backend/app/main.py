@@ -51,7 +51,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    description="Evidence-backed deadline rescue agent for the Alexa+ hackathon track.",
+    description="Aheadly: Evidence-backed personal deadline rescue agent for the Alexa+ hackathon track.",
     lifespan=lifespan
 )
 

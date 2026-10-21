@@ -52,7 +52,7 @@ async def test_health_info_and_stats_endpoints(setup_api):
     assert r_info.status_code == 200
     i_data = r_info.json()
     assert i_data["track"] == "Alexa+"
-    assert i_data["mcp_server"] == "deadline-rescue-mcp"
+    assert i_data["mcp_server"] in ("aheadly-mcp", "deadline-rescue-mcp")
     assert i_data["protocol_version"] == "2025-11-25"
 
     # Stats

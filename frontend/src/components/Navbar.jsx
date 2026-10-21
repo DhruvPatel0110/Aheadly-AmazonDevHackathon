@@ -21,8 +21,11 @@ export default function Navbar({ stats, onResetData, isLive, mcpLogCount }) {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <h1 style={{ fontSize: '18px', fontWeight: '800', letterSpacing: '-0.02em', margin: 0 }}>
-              Deadline Rescue
+              Aheadly
             </h1>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: '600' }}>
+              Deadline Rescue
+            </span>
             <span className="badge badge-primary" style={{ fontSize: '10px', padding: '2px 7px' }}>
               Alexa+ Track
             </span>

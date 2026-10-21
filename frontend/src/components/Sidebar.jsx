@@ -28,8 +28,8 @@ export default function Sidebar({ activeTab, onSelectTab, onOpenIngest, isMcpOnl
             <ShieldCheck size={22} color="#FFF0DB" />
           </div>
           <div className="sidebar-brand-text">
-            <span className="sidebar-brand-name">Deadline</span>
-            <span className="sidebar-brand-sub">Rescue</span>
+            <span className="sidebar-brand-name">Aheadly</span>
+            <span className="sidebar-brand-sub">Deadline Rescue</span>
           </div>
         </a>
 

@@ -257,7 +257,7 @@ class DeadlineRescueTools:
             "has_verified_url": bool(deadline.official_url),
             "action_instructions": deadline.next_step_instructions,
             "checklist": checklist,
-            "safety_notice": "Deadline Rescue prepares the verified path; external actions must be completed by the user."
+            "safety_notice": "Aheadly prepares the verified path; external actions must be completed by the user."
         }
 
     @staticmethod

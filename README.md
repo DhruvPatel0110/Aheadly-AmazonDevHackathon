@@ -1,7 +1,7 @@
 <div align="center">
 
-# ⏳🛡️ Deadline Rescue
-### Evidence-Backed Personal Deadline Agent • Self-Hosted MCP Protocol
+# ⏳🛡️ Aheadly
+### Deadline Rescue • Evidence-Backed Personal Obligation Agent
 
 **Amazon Developer Hackathon 2026 — Primary Track: Alexa+**
 
@@ -20,7 +20,7 @@
 
 ---
 
-![Deadline Rescue Dashboard](frontend/images/dashboard.png)
+![Aheadly Dashboard](frontend/images/dashboard.png)
 
 </div>
 
@@ -52,10 +52,10 @@ Standard reminder tools fail because:
 2. **Standard LLMs hallucinate dates**: When asked to summarize a document, generic LLMs frequently invent dates, confuse billing cycle dates with payment due dates, or silently invent a current-year assumption for future obligations.
 3. **They offer no follow-through**: Knowing a subscription renews in 2 days does not help unless you have the cancellation portal, steps, and advance notice.
 
-### 🛡️ The Deadline Rescue Difference
+### 🛡️ The Aheadly Difference
 
 - **Verbatim Evidence Anchoring:** Every candidate deadline is backed by an exact substring quote and character offsets `[start : end]` in the original source document.
-- **Refusal to Invent False Certainty:** If a document contains vague phrasing (*"Payment due sometime this month"*), Deadline Rescue categorizes it as `UNVERIFIED` and blocks calendar alarms until confirmed.
+- **Refusal to Invent False Certainty:** If a document contains vague phrasing (*"Payment due sometime this month"*), Aheadly categorizes it as `UNVERIFIED` and blocks calendar alarms until confirmed.
 - **Genuine MCP Protocol Execution:** Every single action — document ingestion, candidate extraction, evidence retrieval, date confirmation, follow-up scheduling, next-step preparation, and status transition — runs as real JSON-RPC 2.0 tool calls over Streamable HTTP (MCP Spec 2025-11-25+).
 - **Full Follow-Through Engine:** Automatically prepares actionable checklists, surfaces verified provider portals, schedules advance alerts (7d, 3d, 1d prior), and tracks obligations through to resolution.
 
@@ -112,7 +112,7 @@ Standard reminder tools fail because:
 
 ## 🔧 The 8 Official MCP Tools
 
-Deadline Rescue implements **8 genuine MCP tools** conforming strictly to JSON-RPC 2.0 specifications over Streamable HTTP:
+Aheadly implements **8 genuine MCP tools** conforming strictly to JSON-RPC 2.0 specifications over Streamable HTTP:
 
 ```text
 MCP Server Base Endpoint: POST http://127.0.0.1:8000/mcp
@@ -138,14 +138,14 @@ Live SSE Feed: GET http://127.0.0.1:8000/mcp
 
 Built to satisfy the **₹0 out-of-pocket** hackathon constraint. No paid API keys, no expiring trial accounts, no AWS credit dependencies:
 
-| Component | Standard Approach (Costly) | Deadline Rescue Architecture (₹0) | Out-of-Pocket Cost |
+| Component | Standard Approach (Costly) | Aheadly Architecture (₹0) | Out-of-Pocket Cost |
 | :--- | :--- | :--- | :--- |
 | **Model Ingestion** | OpenAI GPT-4o / Claude 3.5 Sonnet API | Local Deterministic Regex + Grammar Parser | **₹0.00** |
 | **Local LLM Fallback** | Cloud LLM Gateway (OpenRouter/Bedrock) | Optional Local Ollama (`llama3.2`) with deterministic fallback | **₹0.00** |
 | **Database** | Managed Cloud DB (Supabase / RDS) | Zero-Config Local SQLite with WAL mode & ACID transactions | **₹0.00** |
 | **Hosting & Protocol** | Cloud MCP Platform / Hosted Gateway | Self-hosted Streamable HTTP MCP server in Python | **₹0.00** |
 | **Reminders** | Paid Twilio SMS / AWS SNS | In-app local background scheduler & RFC 5545 `.ics` export | **₹0.00** |
-| **Total Cost** | *₹5,000 – ₹20,000 / month* | **Deadline Rescue Stack** | **₹0.00** |
+| **Total Cost** | *₹5,000 – ₹20,000 / month* | **Aheadly Stack** | **₹0.00** |
 
 ---
 

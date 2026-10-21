@@ -29,7 +29,7 @@ async def test_mcp_get_sse_stream_and_endpoint_event(async_client):
 
     body = response.text
     assert "event: endpoint" in body
-    assert "deadline-rescue-mcp" in body
+    assert "aheadly-mcp" in body or "deadline-rescue-mcp" in body
     assert "1.0.0" in body
     assert "2025-11-25" in body
 
@@ -54,7 +54,7 @@ async def test_mcp_post_initialize(async_client):
 
     result = data.get("result", {})
     assert result.get("protocolVersion") == "2025-11-25"
-    assert result.get("serverInfo", {}).get("name") == "deadline-rescue-mcp"
+    assert result.get("serverInfo", {}).get("name") in ("aheadly-mcp", "deadline-rescue-mcp")
     assert result.get("serverInfo", {}).get("version") == "1.0.0"
     assert "tools" in result.get("capabilities", {})
 

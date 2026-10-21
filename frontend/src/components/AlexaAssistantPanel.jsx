@@ -15,7 +15,7 @@ export default function AlexaAssistantPanel({ activeDeadlineId, onDeadlineAction
     {
       id: 'welcome',
       sender: 'alexa',
-      text: "Hello Dhruv! I'm your **Deadline Rescue Agent**. I verify deadlines directly against your bills and emails, ground every date in verbatim evidence, and prepare step-by-step follow-through guides.",
+      text: "Hello Dhruv! I'm Aheadly, your **Deadline Rescue Agent**. I verify deadlines directly against your bills and emails, ground every date in verbatim evidence, and prepare step-by-step follow-through guides.",
       tools_invoked: ['mcp_initialized'],
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
@@ -138,7 +138,7 @@ export default function AlexaAssistantPanel({ activeDeadlineId, onDeadlineAction
                 {!isUser && (
                   <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#000035', fontWeight: '600' }}>
                     <Bot size={13} />
-                    Deadline Rescue
+                    Aheadly
                   </span>
                 )}
                 {isUser && (
@@ -266,7 +266,7 @@ export default function AlexaAssistantPanel({ activeDeadlineId, onDeadlineAction
         <input
           type="text"
           className="input-cream"
-          placeholder="Ask Deadline Rescue (e.g., 'How do I cancel?', 'Confirm date')..."
+          placeholder="Ask Aheadly (e.g., 'How do I cancel?', 'Confirm date')..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {

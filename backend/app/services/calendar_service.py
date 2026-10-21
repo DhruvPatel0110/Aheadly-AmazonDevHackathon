@@ -15,7 +15,7 @@ def generate_ics_content(deadline: Deadline, reminders: Optional[List[Reminder]]
     including advance alarms for all scheduled reminders.
     """
     cal = Calendar()
-    cal.add('prodid', '-//Deadline Rescue//Alexa+ Hackathon 2026//EN')
+    cal.add('prodid', '-//Aheadly//Deadline Rescue//Alexa+ Hackathon 2026//EN')
     cal.add('version', '2.0')
 
     if not deadline.candidate_date or deadline.candidate_date == "UNVERIFIED":
@@ -34,7 +34,7 @@ def generate_ics_content(deadline: Deadline, reminders: Optional[List[Reminder]]
         dt = dt.replace(tzinfo=timezone.utc)
 
     event = Event()
-    event.add('summary', f"[Deadline Rescue] {deadline.provider_name} - {deadline.obligation_type.value.replace('_', ' ').title()}")
+    event.add('summary', f"[Aheadly] {deadline.provider_name} - {deadline.obligation_type.value.replace('_', ' ').title()}")
     event.add('dtstart', dt)
     event.add('dtend', dt + timedelta(hours=1))
     event.add('dtstamp', datetime.now(timezone.utc))

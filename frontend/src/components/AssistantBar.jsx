@@ -18,7 +18,7 @@ export default function AssistantBar({ onChatSubmit, isTyping = false, activeRep
         <input
           type="text"
           className="assistant-bar-input"
-          placeholder="Ask Deadline Rescue..."
+          placeholder="Ask Aheadly..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           disabled={isTyping}
@@ -51,7 +51,7 @@ export default function AssistantBar({ onChatSubmit, isTyping = false, activeRep
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#000035', fontWeight: '700', fontSize: '13px' }}>
               <Bot size={16} color="#000035" />
-              <span>Deadline Rescue Assistant</span>
+              <span>Aheadly Assistant</span>
             </div>
             <button
               onClick={onCloseReply}

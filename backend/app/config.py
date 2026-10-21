@@ -16,9 +16,9 @@ SAMPLE_DATA_DIR.mkdir(parents=True, exist_ok=True)
 DEFAULT_DB_PATH = str(DATA_DIR / "deadline_rescue.db")
 
 class Settings(BaseModel):
-    app_name: str = "Deadline Rescue"
+    app_name: str = "Aheadly"
     app_version: str = "1.0.0"
-    mcp_server_name: str = "deadline-rescue-mcp"
+    mcp_server_name: str = "aheadly-mcp"
     mcp_protocol_version: str = "2025-11-25"
     db_path: str = os.getenv("DEADLINE_RESCUE_DB_PATH", DEFAULT_DB_PATH)
     host: str = "127.0.0.1"

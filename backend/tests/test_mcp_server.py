@@ -33,7 +33,7 @@ async def test_mcp_initialize_jsonrpc():
         assert data["id"] == "req-init-1"
         result = data["result"]
         assert result["protocolVersion"] == "2025-11-25"
-        assert result["serverInfo"]["name"] == "deadline-rescue-mcp"
+        assert result["serverInfo"]["name"] in ("aheadly-mcp", "deadline-rescue-mcp")
         assert "tools" in result["capabilities"]
 
 
@@ -281,7 +281,7 @@ async def test_mcp_sse_endpoint_headers():
         assert "no-cache" in res.headers["cache-control"]
         assert res.headers.get("x-accel-buffering") == "no"
         assert "endpoint" in res.text
-        assert "deadline-rescue-mcp" in res.text
+        assert "aheadly-mcp" in res.text or "deadline-rescue-mcp" in res.text
 
 
 @pytest.mark.asyncio

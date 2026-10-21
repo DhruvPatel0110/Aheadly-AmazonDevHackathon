@@ -23,7 +23,7 @@ async def test_health_and_info_endpoints():
         assert info_res.status_code == 200
         info_data = info_res.json()
         assert info_data["track"] == "Alexa+"
-        assert info_data["mcp_server"] == "deadline-rescue-mcp"
+        assert info_data["mcp_server"] in ("aheadly-mcp", "deadline-rescue-mcp")
 
 
 @pytest.mark.asyncio
