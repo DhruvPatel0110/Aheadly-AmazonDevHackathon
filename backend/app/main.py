@@ -4,9 +4,8 @@ from contextlib import asynccontextmanager
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException, Query, Response, UploadFile, File, Form, Request, Header
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from app.config import settings, BASE_DIR
+from app.config import settings
 from app.database import init_db
 from app.schemas import Deadline, DeadlineCreate, DeadlineUpdate, Source, SourceCreate, ChatRequest, Reminder
 from app.services.deadline_service import DeadlineService
@@ -56,10 +55,11 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS middleware for local development
+# CORS middleware for local development and cloud deployments
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -72,6 +72,19 @@ app.include_router(mcp_router)
 # ---------------------------------------------------------------------------
 # System & Meta Endpoints
 # ---------------------------------------------------------------------------
+
+@app.get("/")
+async def root():
+    return {
+        "app": settings.app_name,
+        "tagline": "Deadline Rescue",
+        "status": "online",
+        "mcp_protocol": settings.mcp_protocol_version,
+        "docs_url": "/docs",
+        "health_url": "/api/health",
+        "mcp_endpoint": "/mcp"
+    }
+
 
 @app.get("/api/health")
 async def health_check():
@@ -373,10 +386,3 @@ async def delete_deadline(deadline_id: str):
 @app.get("/api/deadlines/{deadline_id}/audit")
 async def get_deadline_audit(deadline_id: str):
     return await DeadlineService.get_audit_logs(deadline_id)
-
-
-# Production mount: serve pre-built React 19 frontend if available
-frontend_dist = BASE_DIR.parent / "frontend" / "dist"
-if frontend_dist.exists() and (frontend_dist / "index.html").exists():
-    app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="frontend")
-

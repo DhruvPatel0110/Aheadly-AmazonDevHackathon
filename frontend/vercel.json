@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:match*",
+      "destination": "https://aheadly-amazondevhackathon.onrender.com/api/:match*"
+    },
+    {
+      "source": "/mcp/:match*",
+      "destination": "https://aheadly-amazondevhackathon.onrender.com/mcp/:match*"
+    }
+  ]
+}
